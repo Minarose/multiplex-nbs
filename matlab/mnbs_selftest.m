@@ -34,7 +34,7 @@ assert(abs(mnbs_tcdf(-1,1)-0.25)<1e-12);
 options=struct('nPerm',19,'rngSeed',11,'tail','both','t0',3);
 a=mnbs_analyze(W,g,options); b=mnbs_analyze(W,g,options);
 assert(isequal(a.nullMax,b.nullMax) && isequal(a.stats.Tef,b.stats.Tef));
-timeOptions=options; timeOptions.axisName='Time'; timeOptions.axisUnit='ms'; timeOptions.axisValues=0:50:350;
+timeOptions=options; timeOptions.axisName='Time'; timeOptions.axisUnit='ms'; timeOptions.axisValues=0:50:450; % one value per demo layer (10)
 timeResult=mnbs_analyze(W,g,timeOptions);
 assert(isequal(a.nullMax,timeResult.nullMax) && isequal(a.pvalues,timeResult.pvalues));
 assert(strcmp(timeResult.axis.name,'Time'));
