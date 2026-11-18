@@ -1,6 +1,7 @@
 name: Tests
 on:
   push:
+    branches: ['**']   # not tags: the release workflow tests each build itself
   pull_request:
   workflow_dispatch:
 permissions:
