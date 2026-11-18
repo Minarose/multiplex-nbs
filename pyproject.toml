@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multiplex-nbs"
+version = "0.1.0"
+description = "Network-based statistics for one network or a stack of networks across time, frequency or other ordered layers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Minarose M. Ismail" },
+    { name = "Brady J. Williamson" },
+    { name = "Darren S. Kadis" },
+]
+keywords = ["network-based statistic", "NBS", "connectivity", "connectome", "MEG", "EEG", "fMRI",
+            "permutation test", "multilayer network", "neuroimaging"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = ["numpy>=1.24", "scipy>=1.10"]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+
+[project.urls]
+Homepage = "https://github.com/Minarose/multiplex-nbs"
+Documentation = "https://github.com/Minarose/multiplex-nbs/tree/main/docs"
+Issues = "https://github.com/Minarose/multiplex-nbs/issues"
+
+[project.scripts]
+multiplex-nbs = "multiplex_nbs.__main__:main"
+
+[project.gui-scripts]
+multiplex-nbs-app = "multiplex_nbs.native_app:main"
+
+[tool.setuptools.packages.find]
+include = ["multiplex_nbs*"]
+
+[tool.setuptools.package-data]
+multiplex_nbs = ["static/*.json", "static/*.txt", "data/*.npz", "data/*.json", "data/*.txt", "data/*.md"]

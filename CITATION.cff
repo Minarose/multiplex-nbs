@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use Multiplex-NBS, please cite the software as below and the original network-based statistic (Zalesky et al., 2010)."
+title: "Multiplex-NBS: network-based statistics for one network or a stack of networks"
+type: software
+version: 0.1.0
+license: GPL-3.0-or-later
+repository-code: "https://github.com/Minarose/multiplex-nbs"
+keywords:
+  - network-based statistic
+  - connectivity
+  - multilayer network
+  - permutation inference
+  - neuroimaging
+  - MEG
+  - EEG
+authors:
+  - family-names: Ismail
+    given-names: Minarose M.
+    affiliation: "Department of Physiology, University of Toronto, and Neurosciences & Mental Health, The Hospital for Sick Children, Toronto, Ontario, Canada"
+  - family-names: Williamson
+    given-names: Brady J.
+    affiliation: "Department of Radiology, College of Medicine, University of Cincinnati, Cincinnati, OH, USA"
+  - family-names: Kadis
+    given-names: Darren S.
+    affiliation: "Department of Physiology, University of Toronto, and Neurosciences & Mental Health, The Hospital for Sick Children, Toronto, Ontario, Canada"
+references:
+  - type: article
+    title: "Network-based statistic: identifying differences in brain networks"
+    authors:
+      - family-names: Zalesky
+        given-names: Andrew
+      - family-names: Fornito
+        given-names: Alex
+      - family-names: Bullmore
+        given-names: Edward T.
+    journal: NeuroImage
+    volume: 53
+    start: 1197
+    end: 1207
+    year: 2010
+    doi: 10.1016/j.neuroimage.2010.06.041

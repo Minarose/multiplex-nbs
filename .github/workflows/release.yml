@@ -1,0 +1,115 @@
+name: Release desktop apps
+# Push a tag such as v0.1.0 (or run by hand with a tag) to build the macOS (Apple silicon
+# and Intel) and Windows apps on their own systems and attach them to a draft release.
+# Nothing is published until a maintainer reviews the draft and presses Publish.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build, e.g. v0.1.0
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - id: tag
+        run: echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then exit 0; fi
+          cat > notes.md <<'NOTES'
+          ## Download the app
+
+          | Computer | File |
+          |---|---|
+          | Mac with Apple silicon (macOS 14+) | `Multiplex-NBS-*-macOS-arm64.zip` |
+          | Mac with an Intel processor (macOS 11+) | `Multiplex-NBS-*-macOS-x86_64.zip` |
+          | Windows 10 or 11 (64-bit) | `Multiplex-NBS-*-Windows-x86_64.zip` |
+
+          Extract the ZIP and open **MultiplexNBS**. The app is not yet signed: on macOS
+          Control-click the app and choose **Open**; on Windows choose **More info → Run anyway**.
+          See the [app guide](https://github.com/Minarose/multiplex-nbs/blob/main/docs/app-guide.md).
+          Each ZIP has a `.sha256` checksum and contains its build manifest.
+
+          Python and MATLAB users: see the README. Changes: see CHANGELOG.md.
+          NOTES
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "Multiplex-NBS ${TAG#v}" --notes-file notes.md
+
+  apps:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: macOS-arm64
+            python_arch: arm64
+            macos_min: '14.0'
+            wheel_platform: macosx_14_0_arm64
+          - os: macos-15-intel
+            platform: macOS-x86_64
+            python_arch: x64
+            macos_min: '11.0'
+            wheel_platform: macosx_11_0_x86_64
+          - os: windows-2022
+            platform: Windows-x86_64
+            python_arch: x64
+    runs-on: ${{ matrix.os }}
+    env:
+      MNBS_MACOS_MIN: ${{ matrix.macos_min }}
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_min }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.draft.outputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14.10'
+          architecture: ${{ matrix.python_arch }}
+      - name: Use library builds that run on the oldest supported macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          python -m pip download --only-binary=:all: --no-deps --dest target-wheels \
+            --platform '${{ matrix.wheel_platform }}' --python-version 3.14 \
+            --implementation cp --abi cp314 numpy==2.5.4 scipy==1.18.1
+          python -m pip install target-wheels/*.whl
+      - run: python -m pip install . numpy==2.5.4 scipy==1.18.1 pyinstaller==6.22.3 pyinstaller-hooks-contrib==2026.10
+      - run: python -m unittest discover -s tests -v
+        env:
+          NBS_TEST_DESKTOP: '1'
+      - run: python -c "import _tkinter; print(_tkinter.TCL_VERSION, _tkinter.TK_VERSION)"
+      - run: python packaging/build_desktop.py
+      - name: Start the built app in self-test mode and package it
+        run: python packaging/package_desktop.py
+      - name: Attach to the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.draft.outputs.tag }}" dist/native/Multiplex-NBS-*.zip dist/native/Multiplex-NBS-*.zip.sha256 --clobber --repo "$GITHUB_REPOSITORY"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: build-record-${{ matrix.platform }}
+          path: |
+            dist/native/build-manifest.json
+            dist/native/desktop-self-test.json
+            dist/native/desktop-self-test.trace.txt
+          if-no-files-found: ignore
+          retention-days: 30

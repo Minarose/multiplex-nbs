@@ -1,0 +1,153 @@
+function clusters = build_node_frequency_clusters_fn(Tef, iUT, jUT, nNodes, t0, tail, clusterMetric)
+% BUILD_NODE_FREQUENCY_CLUSTERS_FN
+% Darren S. Kadis, PhD | 24MAR2026 | Toronto, Canada
+% Build node x frequency clusters from an edge x frequency statistic map.
+%
+% Inputs
+%   Tef           : edge x frequency statistic map
+%   iUT, jUT      : node indices for upper-triangle edges
+%   nNodes        : number of nodes
+%   t0            : primary threshold
+%   tail          : 'right' or 'left'
+%   clusterMetric : 'extent' (default) or 'mass'
+%
+% Notes
+%   extent = number of node-frequency sites in the cluster
+%   mass   = sum of node contributions across the cluster
+%
+%   The field clusters(c).testStat stores the inferential cluster object,
+%   defined according to clusterMetric.
+
+if nargin < 7 || isempty(clusterMetric)
+    clusterMetric = 'extent';
+end
+
+% ------------------------------ threshold edge map
+[~, nFreq] = size(Tef);
+
+switch lower(tail)
+    case 'right'
+        supraEdge = Tef > t0;
+        Teff = Tef;
+    case 'left'
+        supraEdge = Tef < -t0;
+        Teff = -Tef;
+    otherwise
+        error('Unknown tail: %s', tail);
+end
+
+% ------------------------------ accumulate node mask and node mass
+nodeMask = false(nNodes, nFreq);
+nodeMass = zeros(nNodes, nFreq);
+
+for f = 1:nFreq
+    ef = find(supraEdge(:,f));
+    for k = 1:numel(ef)
+        e = ef(k);
+        i = iUT(e);
+        j = jUT(e);
+        w = Teff(e,f);
+
+        nodeMask(i,f) = true;
+        nodeMask(j,f) = true;
+
+        % split edge contribution equally across endpoints
+        nodeMass(i,f) = nodeMass(i,f) + w/2;
+        nodeMass(j,f) = nodeMass(j,f) + w/2;
+    end
+end
+
+% ------------------------------ build node-frequency adjacency
+nSites = nNodes * nFreq;
+ii = [];
+jj = [];
+
+% within-frequency links: endpoints of suprathreshold edges
+for f = 1:nFreq
+    ef = find(supraEdge(:,f));
+    for k = 1:numel(ef)
+        e = ef(k);
+        a = sub2ind([nNodes, nFreq], iUT(e), f);
+        b = sub2ind([nNodes, nFreq], jUT(e), f);
+        ii(end+1,1) = a; %#ok<AGROW>
+        jj(end+1,1) = b; %#ok<AGROW>
+    end
+end
+
+% across-frequency links: same node in adjacent bins
+for f = 1:(nFreq-1)
+    shared = find(nodeMask(:,f) & nodeMask(:,f+1));
+    for k = 1:numel(shared)
+        a = sub2ind([nNodes, nFreq], shared(k), f);
+        b = sub2ind([nNodes, nFreq], shared(k), f+1);
+        ii(end+1,1) = a; %#ok<AGROW>
+        jj(end+1,1) = b; %#ok<AGROW>
+    end
+end
+
+% ------------------------------ restrict to active sites and find components
+activeIdx = find(nodeMask(:));
+if isempty(activeIdx)
+    clusters = struct([]);
+    return
+end
+
+A = sparse([ii; jj], [jj; ii], true, nSites, nSites);
+A = A(activeIdx, activeIdx);
+cc = conncomp(graph(A));
+
+% ------------------------------ summarize clusters
+nClust = max(cc);
+clusters = repmat(local_empty_cluster(), 1, nClust);
+
+for c = 1:nClust
+    siteIdx = activeIdx(cc == c);
+    [nodesC, freqsC] = ind2sub([nNodes, nFreq], siteIdx);
+
+    maskC = false(nNodes, nFreq);
+    maskC(siteIdx) = true;
+
+    extentC = numel(siteIdx);
+    massC   = sum(nodeMass(siteIdx), 'omitnan');
+
+    switch lower(clusterMetric)
+        case 'extent'
+            testStatC = extentC;
+        case 'mass'
+            testStatC = massC;
+        otherwise
+            error('Unknown clusterMetric: %s. Use ''extent'' or ''mass''.', clusterMetric);
+    end
+
+    clusters(c).id            = c;
+    clusters(c).nodeFreqIdx   = siteIdx(:);
+    clusters(c).nodes         = unique(nodesC(:))';
+    clusters(c).freqBins      = unique(freqsC(:))';
+    clusters(c).nNodes        = numel(clusters(c).nodes);
+    clusters(c).nFreqBins     = numel(clusters(c).freqBins);
+    clusters(c).siteCount     = extentC;   % retained for backward compatibility
+    clusters(c).extent        = extentC;
+    clusters(c).mass          = massC;
+    clusters(c).clusterMetric = lower(clusterMetric);
+    clusters(c).testStat      = testStatC;
+    clusters(c).nodeMask      = maskC;
+    clusters(c).nodeMass      = nodeMass .* maskC;
+end
+end
+
+function s = local_empty_cluster()
+s = struct( ...
+    'id', [], ...
+    'nodeFreqIdx', [], ...
+    'nodes', [], ...
+    'freqBins', [], ...
+    'nNodes', 0, ...
+    'nFreqBins', 0, ...
+    'siteCount', 0, ...
+    'extent', 0, ...
+    'mass', 0, ...
+    'clusterMetric', '', ...
+    'testStat', 0, ...
+    'nodeMask', [], ...
+    'nodeMass', []);
+end

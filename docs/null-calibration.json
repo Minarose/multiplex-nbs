@@ -1,0 +1,64 @@
+{
+  "software_version": "0.2.0",
+  "seed": 20261106,
+  "permutations": 199,
+  "alpha": 0.05,
+  "threshold": 3,
+  "tail": "both",
+  "metric": "extent",
+  "shape": [
+    24,
+    8,
+    8,
+    6
+  ],
+  "layer_ar1_coefficient": 0.5,
+  "edge_shared_noise_scale": 0.25,
+  "scope": "Small complete global-null Gaussian scenarios only; not a comprehensive FWER/power validation, and not evidence of localized inference.",
+  "scenarios": [
+    {
+      "design": "two-sample",
+      "adjacency": "consecutive",
+      "replicates": 100,
+      "any_rejection_count": 0,
+      "estimated_global_null_fwer": 0.0,
+      "binomial_95_percent_ci": [
+        0.0,
+        0.03621669264517641
+      ]
+    },
+    {
+      "design": "two-sample",
+      "adjacency": "independent",
+      "replicates": 100,
+      "any_rejection_count": 4,
+      "estimated_global_null_fwer": 0.04,
+      "binomial_95_percent_ci": [
+        0.011004493986188206,
+        0.09925715671265992
+      ]
+    },
+    {
+      "design": "paired",
+      "adjacency": "consecutive",
+      "replicates": 100,
+      "any_rejection_count": 3,
+      "estimated_global_null_fwer": 0.03,
+      "binomial_95_percent_ci": [
+        0.006229971538306395,
+        0.08517605297428
+      ]
+    },
+    {
+      "design": "paired",
+      "adjacency": "independent",
+      "replicates": 100,
+      "any_rejection_count": 0,
+      "estimated_global_null_fwer": 0.0,
+      "binomial_95_percent_ci": [
+        0.0,
+        0.03621669264517641
+      ]
+    }
+  ]
+}
