@@ -11,15 +11,19 @@ Python package and a MATLAB toolbox.
 
 The network-based statistic (NBS; Zalesky et al., 2010) finds connected sets of edges
 that differ between groups or conditions and controls the family-wise error rate with
-permutations. Multiplex-NBS keeps that logic and adds the layer axis:
+permutations. Multiplex-NBS keeps that logic and adds the layer axis: the same network
+measured at successive time points or frequencies.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/methods-overview-dark.svg">
+  <img alt="Classic, layer-wise and multiplex NBS on one network measured at four time points or frequencies" src="docs/images/methods-overview.svg">
+</picture>
 
 | Method | What counts as connected | Use when |
 |---|---|---|
 | **Classic NBS** | Edges sharing regions, in one network (or one layer chosen in advance) | You test a single network |
 | **Layer-wise NBS** | As classic, separately in every layer; one correction across all layers | You want to know which layers show an effect |
 | **Multiplex-NBS** | Also a region with itself in the next layer, so a component can span layers | An effect may persist across time or frequency |
-
-![Layer profile and permutation distribution of the demo component](docs/images/demo-results.png)
 
 ## Desktop app (no programming)
 
@@ -52,6 +56,8 @@ for c in components(result, significant_only=True):
     print(c["id"], c["p_fwe"], c["regions"], c["axis_values"])
 print(result["methods"])                         # a methods paragraph to adapt for a paper
 ```
+
+![Layer profile and permutation distribution of the demo component](docs/images/demo-results.png)
 
 Also `layerwise_nbs`, `classic_nbs`, `save_results` (`.json`, `.csv`, `.mat`, `.txt`)
 and figures (`plot_layer_profile`, `plot_membership`, `plot_null_distribution`). From a
