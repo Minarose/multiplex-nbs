@@ -27,18 +27,34 @@ measured at successive time points or frequencies.
 
 ## Desktop app (no programming)
 
-Download the ZIP for your computer from the
-[latest release](https://github.com/Minarose/multiplex-nbs/releases/latest):
+**Mac:** install from Terminal (Applications → Utilities → Terminal). The app is not yet
+signed by Apple, so macOS blocks it when it is downloaded with a web browser; this command
+downloads it, moves it to Applications and opens it. On a Mac with Apple silicon
+(M1 or later, macOS 14+):
 
-| Computer | File |
-|---|---|
-| Mac with Apple silicon (macOS 14+) | `Multiplex-NBS-<version>-macOS-arm64.zip` |
-| Mac with an Intel processor (macOS 11+) | `Multiplex-NBS-<version>-macOS-x86_64.zip` |
-| Windows 10 or 11 (64-bit) | `Multiplex-NBS-<version>-Windows-x86_64.zip` |
+```bash
+cd ~/Downloads && \
+curl -LO https://github.com/Minarose/multiplex-nbs/releases/download/v0.1.0/Multiplex-NBS-0.1.0-macOS-arm64.zip && \
+ditto -x -k Multiplex-NBS-0.1.0-macOS-arm64.zip Multiplex-NBS && \
+mv Multiplex-NBS/MultiplexNBS.app /Applications/ && \
+rm -rf Multiplex-NBS Multiplex-NBS-0.1.0-macOS-arm64.zip && \
+open /Applications/MultiplexNBS.app
+```
 
-Extract it and open **MultiplexNBS**. The app is not yet signed, so confirm the first
-launch: on macOS Control-click → **Open**; on Windows **More info → Run anyway**.
-Everything runs on your computer. See the [app guide](docs/app-guide.md).
+On a Mac with an Intel processor (macOS 11+), use `macOS-x86_64` in place of
+`macOS-arm64` (three times). The [app guide](docs/app-guide.md#install) has both commands.
+
+**Windows 10 or 11 (64-bit):** download `Multiplex-NBS-0.1.0-Windows-x86_64.zip` from the
+[release page](https://github.com/Minarose/multiplex-nbs/releases/tag/v0.1.0), extract it
+and open **MultiplexNBS.exe**; if *Windows protected your PC* appears, choose
+**More info → Run anyway**.
+
+**In a browser:** [minarose.github.io/multiplex-nbs](https://minarose.github.io/multiplex-nbs/)
+runs the same analysis with nothing to install. It suits trying the app and small to
+moderate datasets; a browser tab has limited memory and one processor core, so use the
+desktop app or Python for large studies.
+
+Everything runs on your computer; nothing is uploaded. See the [app guide](docs/app-guide.md).
 
 ## Python
 

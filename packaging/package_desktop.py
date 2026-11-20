@@ -158,8 +158,8 @@ with zipfile.ZipFile(archive, "a", compression=zipfile.ZIP_DEFLATED) as package:
     package.writestr("START-HERE.txt", f"""Multiplex-NBS {manifest['version']} · desktop app · {system} {architecture}
 
 Extract the whole archive. {first_open}
-If the operating system blocks the first launch, see "Opening the app for the first
-time" in Documentation/app-guide.md, and follow your institution's software policy.
+If the operating system blocks the first launch, see "Install" in
+Documentation/app-guide.md, and follow your institution's software policy.
 
 Start on Overview and choose Try the demo, or open your own data on the Data page.
 All analysis runs locally on your computer; no data leave it. Python is included.

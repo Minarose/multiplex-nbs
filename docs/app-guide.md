@@ -3,36 +3,67 @@
 The Multiplex-NBS app runs classic, layer-wise and multiplex network-based statistics
 without any programming. Everything runs on your computer; nothing is uploaded.
 
-## Download
+## Install
 
-Download the ZIP for your computer from the
-[latest release](https://github.com/Minarose/multiplex-nbs/releases/latest):
-
-| Computer | File | Requires |
+| Computer | Download | Requires |
 |---|---|---|
-| Mac with Apple silicon (M1 or later) | `Multiplex-NBS-<version>-macOS-arm64.zip` | macOS 14 or later |
-| Mac with an Intel processor | `Multiplex-NBS-<version>-macOS-x86_64.zip` | macOS 11 or later |
-| Windows PC (64-bit) | `Multiplex-NBS-<version>-Windows-x86_64.zip` | Windows 10 or 11 |
+| Mac with Apple silicon (M1 or later) | `Multiplex-NBS-0.1.0-macOS-arm64.zip` | macOS 14 or later |
+| Mac with an Intel processor | `Multiplex-NBS-0.1.0-macOS-x86_64.zip` | macOS 11 or later |
+| Windows PC (64-bit) | `Multiplex-NBS-0.1.0-Windows-x86_64.zip` | Windows 10 or 11 |
 
 Not sure which Mac you have? Choose **Apple menu → About This Mac** and look at
-**Chip** or **Processor**. The exact minimum macOS version of each download is in its
-`START-HERE.txt`.
+**Chip** or **Processor**.
 
-Extract the whole ZIP. On a Mac, open `MultiplexNBS.app`. On Windows, open
-`MultiplexNBS\MultiplexNBS.exe` and keep the `_internal` folder next to it.
+### Mac: install from Terminal
 
-## Opening the app for the first time
+The app is not yet signed by Apple, so macOS blocks it when it is downloaded with a web
+browser, and recent versions of macOS may keep blocking it after **Open Anyway**. Install it
+from **Terminal** instead (Applications → Utilities → Terminal): paste the command for your
+Mac and press Return. It downloads the app, moves it to Applications, removes the download
+and opens the app. Afterwards, open it from Applications or Launchpad like any other app.
 
-The app is not yet signed by Apple or Microsoft, so the system asks you to confirm it
-the first time:
+Mac with Apple silicon (M1 or later):
 
-- **macOS:** Control-click the app and choose **Open**, then **Open** again. Or open
-  **System Settings → Privacy & Security** and choose **Open Anyway**
-  (on older macOS: **System Preferences → Security & Privacy**).
-- **Windows:** if *Windows protected your PC* appears, choose **More info → Run anyway**.
+```bash
+cd ~/Downloads && \
+curl -LO https://github.com/Minarose/multiplex-nbs/releases/download/v0.1.0/Multiplex-NBS-0.1.0-macOS-arm64.zip && \
+ditto -x -k Multiplex-NBS-0.1.0-macOS-arm64.zip Multiplex-NBS && \
+mv Multiplex-NBS/MultiplexNBS.app /Applications/ && \
+rm -rf Multiplex-NBS Multiplex-NBS-0.1.0-macOS-arm64.zip && \
+open /Applications/MultiplexNBS.app
+```
 
-Follow your institution's software policy. To check that a download is intact, compare
-its SHA-256 checksum with the `.sha256` file on the release page
+Mac with an Intel processor:
+
+```bash
+cd ~/Downloads && \
+curl -LO https://github.com/Minarose/multiplex-nbs/releases/download/v0.1.0/Multiplex-NBS-0.1.0-macOS-x86_64.zip && \
+ditto -x -k Multiplex-NBS-0.1.0-macOS-x86_64.zip Multiplex-NBS && \
+mv Multiplex-NBS/MultiplexNBS.app /Applications/ && \
+rm -rf Multiplex-NBS Multiplex-NBS-0.1.0-macOS-x86_64.zip && \
+open /Applications/MultiplexNBS.app
+```
+
+If MultiplexNBS is already in Applications, move the old copy to the Bin first.
+
+### Windows
+
+Download `Multiplex-NBS-0.1.0-Windows-x86_64.zip` from the
+[release page](https://github.com/Minarose/multiplex-nbs/releases/tag/v0.1.0) and extract
+the whole ZIP. Open `MultiplexNBS\MultiplexNBS.exe` and keep the `_internal` folder next to
+it. If *Windows protected your PC* appears, choose **More info → Run anyway**.
+
+### In a browser
+
+[minarose.github.io/multiplex-nbs](https://minarose.github.io/multiplex-nbs/) runs the same
+analysis code in a web browser, with nothing to install; files are read by the browser and
+never uploaded. It suits trying the app and small to moderate datasets. A browser tab has
+limited memory and uses one processor core, so large studies (many participants, regions or
+layers, or many thousands of permutations) may run slowly or not load; use the desktop app
+or the Python package for those.
+
+Follow your institution's software policy. To check that a downloaded ZIP is intact,
+compare its SHA-256 checksum with the `.sha256` file on the release page
 (`shasum -a 256 -c <file>.sha256` on macOS, `Get-FileHash <file>` on Windows).
 
 ## Using the app
