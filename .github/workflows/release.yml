@@ -40,9 +40,10 @@ jobs:
           | Mac with an Intel processor (macOS 11+) | `Multiplex-NBS-*-macOS-x86_64.zip` |
           | Windows 10 or 11 (64-bit) | `Multiplex-NBS-*-Windows-x86_64.zip` |
 
-          Extract the ZIP and open **MultiplexNBS**. The app is not yet signed: on macOS
-          Control-click the app and choose **Open**; on Windows choose **More info → Run anyway**.
-          See the [app guide](https://github.com/Minarose/multiplex-nbs/blob/main/docs/app-guide.md).
+          The app is not yet signed. On a Mac, install it from Terminal with the command in the
+          [app guide](https://github.com/Minarose/multiplex-nbs/blob/main/docs/app-guide.md#install),
+          because macOS blocks unsigned apps downloaded with a web browser. On Windows, extract the
+          ZIP, open **MultiplexNBS** and choose **More info → Run anyway** if asked.
           Each ZIP has a `.sha256` checksum and contains its build manifest.
 
           Python and MATLAB users: see the README. Changes: see CHANGELOG.md.
