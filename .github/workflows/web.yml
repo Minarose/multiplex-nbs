@@ -1,0 +1,44 @@
+# Builds the browser app (web/) and publishes it to the gh-pages branch, which GitHub Pages serves.
+# The site is static: the analysis runs in each visitor's browser and no data reach GitHub.
+name: Browser app
+
+on:
+  push:
+    branches: [web/prototype]
+    paths: ['web/**', 'multiplex_nbs/**', '.github/workflows/web.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browser-app
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Build the site
+        run: |
+          python web/build.py
+          mkdir site
+          cp web/index.html web/app.css web/app.js web/figures.js web/worker.js web/engine.zip web/glass-brain.json site/
+          touch site/.nojekyll
+      - name: Publish to gh-pages
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Browser app from ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
