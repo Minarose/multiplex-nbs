@@ -567,7 +567,7 @@ def model_page(app, parent):
     threshold = tk.StringVar(parent, config.get("threshold", "" if _threshold_unit(mode_key, design_key) == "mean weight" else 3))
     tail_var = tk.StringVar(parent, TAILS.get(config.get("tail"), "Positive"))
     metric_var = tk.StringVar(parent, _metric_options(mode_key).get(config.get("metric"), _metric_options(mode_key)["extent"]))
-    perm = tk.StringVar(parent, config.get("n_perm", 1000))
+    perm = tk.StringVar(parent, config.get("n_perm", 9999))
     seed = tk.StringVar(parent, "" if config.get("seed", 1) is None else config.get("seed", 1))
     alpha = tk.StringVar(parent, config.get("alpha", .05))
     method = tk.StringVar(parent, RESAMPLING.get(config.get("method"), "Automatic"))

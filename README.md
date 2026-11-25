@@ -129,6 +129,16 @@ If you use Multiplex-NBS, please cite the software ([CITATION.cff](CITATION.cff)
 > differences in brain networks. *NeuroImage* 53:1197–1207.
 > doi:10.1016/j.neuroimage.2010.06.041
 
+The permutation framework behind NBS and Multiplex-NBS is described in:
+
+> Nichols TE, Holmes AP (2002). Nonparametric permutation tests for functional
+> neuroimaging: a primer with examples. *Human Brain Mapping* 15:1–25.
+> doi:10.1002/hbm.1058
+>
+> Maris E, Oostenveld R (2007). Nonparametric statistical testing of EEG- and
+> MEG-data. *Journal of Neuroscience Methods* 164:177–190.
+> doi:10.1016/j.jneumeth.2007.03.024
+
 ## Authors
 
 Minarose M. Ismail, Brady J. Williamson and Darren S. Kadis. Multiplex-NBS develops
