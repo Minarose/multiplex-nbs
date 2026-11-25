@@ -8,13 +8,12 @@ METHODS = {
 }
 
 CAPTIONS = {
-    "classic": ("Classic NBS tests the network at one time point or frequency chosen in advance. Edges above "
-                "the threshold that share regions form a component (here A–B–C), and its size is compared with "
-                "the largest component found by chance."),
-    "layerwise": ("Layer-wise NBS runs classic NBS at every time point or frequency. Each component stays at its "
-                  "own point, and one permutation correction covers all of them together."),
-    "multiplex": ("Multiplex-NBS links a region to itself at the next time point or frequency while it stays "
-                  "active (dashed lines), so an effect that persists forms one component and is tested once."),
+    "classic": ("Identifies connected components within a single adjacency matrix and evaluates their statistical "
+                "significance through permutation testing."),
+    "layerwise": ("Identifies components independently within each layer, with permutation testing controlling "
+                  "family-wise error across all layers."),
+    "multiplex": ("Links active regions across adjacent layers, allowing connected components to evolve without "
+                  "requiring identical edges across layers. Significance is assessed through permutation testing."),
 }
 
 
@@ -158,7 +157,7 @@ def draw_null_sketch(canvas, c, family):
     canvas.create_line(observed, top - 6, observed, bottom, fill=c["wire"], width=3, dash=(6, 4))
     canvas.create_text(critical - 6, top, text="critical value", anchor="e", fill=c["paper_muted"], font=(family, -12))
     canvas.create_text(observed - 6, top, text="observed", anchor="e", fill=c["wire"], font=(family, -12, "bold"))
-    canvas.create_text((left + right) / 2, bottom + 18, text="Size of the largest component in each permutation",
+    canvas.create_text((left + right) / 2, bottom + 18, text="Maximum component statistic in each permutation",
                        fill=c["paper_muted"], font=(family, -13))
     canvas.create_text((left + right) / 2, bottom + 40, text="p = (1 + permutations at least as large) / (1 + permutations)",
                        fill=c["paper"], font=(family, -13, "bold"))

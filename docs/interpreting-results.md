@@ -9,24 +9,32 @@ one component can span several time points or frequencies.
 
 ## What the corrected p-value means
 
-The p-value of a component compares its size with the largest component found in each
-permutation of the data. It controls the chance of declaring *any* false component
-anywhere in the tested network and layers (family-wise error).
+The corrected p-value applies to the connected component as a whole, not to individual
+edges, regions, or layers. It compares the component's extent or mass with the maximum
+component statistic obtained in each permutation of the data, and so controls the chance
+of declaring *any* false component anywhere in the tested network and layers
+(family-wise error). One is added to both the numerator and the denominator to account
+for the observed result: p = (1 + permutations at least as large) / (1 + permutations).
 
-You can say: *the network differed between conditions across this set of regions and
-layers (corrected p = …).*
+**What you can say.** A significant component identifies a connected pattern of network
+differences or associations that is unlikely under the null hypothesis, after correction
+for multiple comparisons. The component identifies the regions and layers contributing
+to this pattern.
 
-You cannot say:
+**What you cannot say:**
 
-- that any single edge, region or layer inside the component is significant on its own;
-- that the first and last layers of a component mark where the effect starts or stops
-  (they describe the component, not a corrected estimate of its timing or frequency).
+- that any individual edge, region, or layer within a significant component is
+  independently significant;
+- that the component's boundaries identify precisely where an effect begins or ends.
+  Its spatial and layer-wise extent is descriptive.
 
 ## Choosing settings
 
-Decide the method, design, threshold, tail and component measure **before** looking at
-results. Trying several and keeping the best adds comparisons that the correction does
-not cover. Use at least 5000 permutations for reported results; the smallest possible
+Choose the method, primary threshold, statistical contrast, and component metric
+**before** confirmatory analysis. Exploring alternative settings can help assess
+robustness, but selecting results based on significance introduces additional
+comparisons not accounted for by the permutation correction. The apps use 9,999
+permutations by default; use at least 5000 for reported results. The smallest possible
 p-value is 1/(permutations + 1).
 
 | Measure | Counts | Use when |
