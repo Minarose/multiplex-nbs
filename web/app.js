@@ -13,12 +13,12 @@ const MODE_NOTES = {
   multiplex: "Links a region to itself in neighbouring layers, so a component can span layers. One correction covers all layers.",
 };
 const CAPTIONS = {
-  classic: "Classic NBS tests the network at one time point or frequency chosen in advance. Edges above the threshold "
-    + "that share regions form a component (here A–B–C), and its size is compared with the largest component found by chance.",
-  layerwise: "Layer-wise NBS runs classic NBS at every time point or frequency. Each component stays at its own point, "
-    + "and one permutation correction covers all of them together.",
-  multiplex: "Multiplex-NBS links a region to itself at the next time point or frequency while it stays active "
-    + "(dashed lines), so an effect that persists forms one component and is tested once.",
+  classic: "Identifies connected components within a single adjacency matrix and evaluates their statistical "
+    + "significance through permutation testing.",
+  layerwise: "Identifies components independently within each layer, with permutation testing controlling "
+    + "family-wise error across all layers.",
+  multiplex: "Links active regions across adjacent layers, allowing connected components to evolve without "
+    + "requiring identical edges across layers. Significance is assessed through permutation testing.",
 };
 const DESIGNS = { "two-sample": "Independent groups", paired: "Paired observations", "one-sample": "One sample",
                   "glm-t": "GLM · t contrast", "glm-f": "GLM · F contrast" };
@@ -47,9 +47,11 @@ const DEMO_FACTS = {
 const TOPICS = { method: "Choose a method", interpret: "Interpret a result", inputs: "Prepare inputs", cite: "Citations and credits" };
 const PAGES = { home: "Overview", data: "Data", model: "Statistical model", results: "Results", ...TOPICS };
 const LEADS = {
-  method: "All three methods threshold the edge statistics, group the edges that pass into connected components, and give "
-    + "each component one family-wise corrected p-value by permutation. They differ in what counts as connected.",
-  interpret: "The corrected p-value belongs to the whole component, not to any single region, edge or layer.",
+  method: "All three methods identify connected components from suprathreshold edge statistics and evaluate their "
+    + "extent or mass against permutation-derived null distributions. They differ in how connected components are "
+    + "defined and how layers are incorporated into the analysis.",
+  interpret: "The corrected p-value applies to the connected component as a whole, not to individual edges, regions, "
+    + "or layers.",
   inputs: "One undirected connectivity matrix per participant, or one matrix per layer, with the same regions in the "
     + "same order for everyone.",
   cite: `Multiplex-NBS ${VERSION}. Record the version and your settings (shown with every result) when you report an analysis.`,
@@ -58,12 +60,14 @@ const TABS_STACK = [["profile", "Layer profile"], ["membership", "Node × layer"
                     ["layers", "All layers"], ["null", "Null distribution"]];
 const TABS_SINGLE = [["brain", "Brain"], ["null", "Null distribution"]];
 const TAB_HINTS = {
-  profile: "How much of the network passes the threshold in each layer, and how much of it belongs to this component.",
+  profile: "Distribution of suprathreshold edges and participating regions across layers, highlighting those "
+    + "belonging to the selected component.",
   membership: "Which regions belong to the component, and in which layers.",
   brain: "The component on a glass brain, one layer at a time. Press Play to step through the layers, or drag the slider.",
   network: "The component one layer at a time. Press Play to step through the layers, or drag the slider.",
   layers: "Every layer the component spans, side by side. Click a panel to open that layer in the Brain tab.",
-  null: "How this component's size compares with the largest component found by chance in each permutation.",
+  null: "How the extent or mass of the selected component compares with the maximum component statistic obtained "
+    + "in each permutation.",
 };
 const SPEEDS = [[1500, "1.5 s per layer"], [1000, "1 s per layer"], [500, "0.5 s per layer"],
                 [250, "0.25 s per layer"], [100, "0.1 s per layer"]];
@@ -334,9 +338,8 @@ async function edit(fn, args, files = []) {
 function defaultConfig(desc, demo) {
   const layered = desc.layer_count > 1;
   const config = { mode: layered ? "multiplex" : "classic", design: desc.suggested_design || "", threshold: "3",
-                   tail: "right", metric: "extent", n_perm: "999", seed: "1", alpha: "0.05", method: "auto",
+                   tail: "right", metric: "extent", n_perm: "9999", seed: "1", alpha: "0.05", method: "auto",
                    use_abs: false, classic_layer: 1 };
-  if (demo) config.n_perm = "99";
   if (demo === "paired") config.design = "paired";
   if (config.mode === "classic" && config.design === "one-sample") config.threshold = "";
   return config;
@@ -538,9 +541,8 @@ function overviewPage() {
         <div class="subtitle">Classic, layer-wise and multiplex network-based statistics in one place</div>
       </div>
       <div>
-        <p class="lead">Compare connectivity between groups or conditions. Edges above a threshold are grouped into
-          connected components, and each component receives a family-wise corrected p-value, in one network or across
-          time points or frequency bands.</p>
+        <p class="lead">Multiplex-NBS tests group or condition differences in network connectivity, evaluating the
+          extent or mass of connected components against permutation-derived null distributions.</p>
         <div class="home-actions">
           <button class="btn primary" data-go="data">Start analysis &nbsp;›</button>
           <button class="btn" data-action="try-demo">Try the demo</button>
@@ -1126,14 +1128,22 @@ function referencePage() {
   let body = "";
   if (topic === "method") {
     const details = {
-      classic: ["Use for one network, or one layer chosen in advance.", "Component size: edges (extent) or summed excess over the threshold (intensity)."],
-      layerwise: ["Use to find which layers show an effect, with one correction across all of them.", "Component size: region–layer sites (extent) or summed statistics (mass), within a layer."],
-      multiplex: ["Use when an effect may continue across neighbouring frequencies or time points.", "Component size: region–layer sites (extent) or summed statistics (mass), across layers."],
+      classic: ["Identifies connected components within a single adjacency matrix, with significance assessed through "
+                  + "permutation testing.",
+                "Component statistic: number of suprathreshold edges (extent) or summed excess over the threshold (intensity)."],
+      layerwise: ["Identifies connected components independently within each layer, with permutation testing controlling "
+                    + "family-wise error across all layers.",
+                  "Component statistic: number of region–layer sites (extent) or summed statistics (mass), within each layer."],
+      multiplex: ["Links active regions across adjacent layers, allowing connected components to evolve without requiring "
+                    + "identical edges across layers. Significance is assessed through permutation testing.",
+                  "Component statistic: number of region–layer sites (extent) or summed statistics (mass), across layers."],
     };
     body = `<div class="method-cards">${Object.entries(METHODS).map(([key, name]) => `
         <div class="card"><div class="card-title" style="margin-bottom: 10px">${name}</div>
           ${methodFigure(S.theme, key, { labels: false, legend: false })}
           <p>${esc(details[key][0])}</p><p class="muted">${esc(details[key][1])}</p></div>`).join("")}</div>`
+      + `<p class="muted" style="margin-top: 18px">Within a single layer, edge-based and node-based approaches identify the same `
+      + `connected components, but extent counts edges in Classic NBS and participating regions in the node-based methods.</p>`
       + section("How the correction works", "", [
         "Compute a test statistic for every edge in every layer, such as Welch's t for two groups.",
         "Keep the edges above the primary threshold and find the connected components.",
@@ -1146,19 +1156,24 @@ function referencePage() {
         "Corrected p uses (1 + exceedances) / (1 + permutations); v1.2 uses exceedances / permutations."]) : "");
   } else if (topic === "interpret") {
     body = `<div class="sketch" data-sketch="null"></div>`
-      + section("What you can say", "The network differed between conditions across this set of regions and layers, with "
-        + "the corrected p-value for the component.")
+      + section("What you can say", "A significant component identifies a connected pattern of network differences or "
+        + "associations that is unlikely under the null hypothesis, after correction for multiple comparisons. The "
+        + "component identifies the regions and layers contributing to this pattern.")
       + section("What you cannot say", "", [
-        "That any one edge, region or layer inside the component is significant on its own.",
-        "That the first and last layers mark where the effect starts or stops. The span is descriptive."])
-      + section("Decide in advance", "Choose the method, threshold, tail and component measure before looking at results. "
-        + "Trying several settings and keeping the best one adds comparisons that the correction does not cover.")
+        "That any individual edge, region, or layer within a significant component is independently significant.",
+        "That the component's boundaries identify precisely where an effect begins or ends. Its spatial and layer-wise "
+          + "extent is descriptive."])
+      + section("Decide in advance", "Choose the method, primary threshold, statistical contrast, and component metric "
+        + "before confirmatory analysis. Exploring alternative settings can help assess robustness, but selecting results "
+        + "based on significance introduces additional comparisons not accounted for by the permutation correction.")
       + section("Assumptions", "", [
-        "Shuffling group labels assumes participants are exchangeable when there is no effect.",
-        "Sign flips (paired and one-sample tests) assume differences are symmetric around zero under the null.",
-        "Residual permutation with covariates (Freedman–Lane) is approximate."])
-      + section("Example", "In the demo, Classic NBS at 100 ms found a component of 3 edges joining 4 regions "
-        + "(intensity 8.36, corrected p = .010; threshold 3, 99 permutations, seed 1).");
+        "Unrestricted label permutation requires observations to be exchangeable under the null hypothesis.",
+        "Paired comparisons require permutations that preserve subject pairing, such as within-subject condition swaps "
+          + "or sign-flipping paired differences.",
+        "Freedman–Lane permutation accommodates nuisance regressors by permuting residuals from a reduced GLM. Validity "
+          + "depends on the error structure and exchangeability assumptions."])
+      + section("Example", "In the demonstration dataset, Classic NBS at 100 ms identified a component containing 3 edges "
+        + "connecting 4 regions (intensity = 8.36, FWE-corrected p = 0.0001; primary threshold = 3, 9,999 permutations).");
   } else if (topic === "inputs") {
     body = `<div class="sketch" data-sketch="data"></div>`
       + section("One combined file", "", [
@@ -1179,6 +1194,11 @@ function referencePage() {
     body = section("Original method", "Zalesky A, Fornito A, Bullmore ET. Network-based statistic: identifying differences "
         + "in brain networks. NeuroImage (2010) 53: 1197–1207. doi:10.1016/j.neuroimage.2010.06.041")
       + `<button class="btn" data-action="copy-link" data-link="https://doi.org/10.1016/j.neuroimage.2010.06.041">Copy DOI link</button>`
+      + section("Statistical foundations", "", [
+        "Nichols TE, Holmes AP. Nonparametric permutation tests for functional neuroimaging: a primer with examples. "
+          + "Human Brain Mapping (2002) 15: 1–25. doi:10.1002/hbm.1058",
+        "Maris E, Oostenveld R. Nonparametric statistical testing of EEG- and MEG-data. Journal of Neuroscience Methods "
+          + "(2007) 164: 177–190. doi:10.1016/j.jneumeth.2007.03.024"])
       + section("Software contributors", "Minarose M. Ismail¹˒² · Brady J. Williamson³ · Darren S. Kadis¹˒²")
       + `<p class="muted">¹ Department of Physiology, University of Toronto, Toronto, Canada<br>
           ² Neurosciences &amp; Mental Health, The Hospital for Sick Children, Toronto, Canada<br>

@@ -210,7 +210,7 @@ export function nullSketch(theme, width) {
   out.push(`<line x1="${r(observed)}" y1="${top - 6}" x2="${r(observed)}" y2="${bottom}" stroke="${c.wire}" stroke-width="3" stroke-dasharray="6 4"/>`);
   out.push(`<text x="${r(critical - 6)}" y="${top}" dy=".35em" text-anchor="end" font-size="12" fill="${c.paper_muted}">critical value</text>`);
   out.push(`<text x="${r(observed - 6)}" y="${top}" dy=".35em" text-anchor="end" font-size="12" font-weight="600" fill="${c.wire}">observed</text>`);
-  out.push(`<text x="${(left + right) / 2}" y="${bottom + 18}" dy=".35em" text-anchor="middle" font-size="13" fill="${c.paper_muted}">Size of the largest component in each permutation</text>`);
+  out.push(`<text x="${(left + right) / 2}" y="${bottom + 18}" dy=".35em" text-anchor="middle" font-size="13" fill="${c.paper_muted}">Maximum component statistic in each permutation</text>`);
   out.push(`<text x="${(left + right) / 2}" y="${bottom + 40}" dy=".35em" text-anchor="middle" font-size="13" font-weight="600" fill="${c.paper}">p = (1 + permutations at least as large) / (1 + permutations)</text>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family='${FONT}'>${out.join("")}</svg>`;
 }
@@ -352,12 +352,12 @@ function profile(ctx) {
   const per = geo.per;
   const left = 112, right = w - 28;
   const step = (right - left) / layers;
-  const panels = [[80, 230, "edges", "Edges above threshold", "Edges"],
-                  [80 + 230 + 96, 170, "nodes", "Active regions", "Regions"]];
+  const panels = [[80, 230, "edges", "Number of suprathreshold edges", "Edges"],
+                  [80 + 230 + 96, 170, "nodes", "Number of participating regions", "Regions"]];
   const x0 = left + (span[0] - 1) * step, x1 = left + span[span.length - 1] * step;
   P.rect(x0, panels[0][0] - 8, x1 - x0, panels[1][0] + panels[1][1] - panels[0][0] + 8, pal.band);
   legend(ctx, right, 22, [["box", pal.component, `Component ${comp.id}`],
-                          ["box", pal.context, "All edges above threshold, same sign"],
+                          ["box", pal.context, "All suprathreshold edges, same sign"],
                           ["box", pal.band, "Layers the component spans"]], "right");
   for (const [top, h, key, title, unit] of panels) {
     P.text(left, top - 30, title, { size: 13, bold: true });
@@ -659,22 +659,67 @@ export function criticalValue(draws, alpha) {
   return k < 0 ? null : (k >= ordered.length ? 0 : ordered[k]);
 }
 
+/** The smallest width of 1, 2, 2.5 or 5 times a power of ten that is at least raw (whole numbers if integer). */
+function niceWidth(raw, integer) {
+  raw = Math.max(raw, 1e-12);
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  let width = raw;
+  for (const multiple of [1, 2, 2.5, 5, 10]) {
+    width = multiple * magnitude;
+    if (width >= raw * (1 - 1e-9) && (!integer || Number.isInteger(width))) break;
+  }
+  return integer ? Math.max(1, Math.round(width)) : width;
+}
+
+function quantile(sorted, q) {
+  const position = (sorted.length - 1) * q, low = Math.floor(position), high = Math.ceil(position);
+  return sorted[low] + (sorted[high] - sorted[low]) * (position - low);
+}
+
+/** Histogram edges for the permutation maxima (a port of null_bins in native_results.py). The width follows the
+ *  Freedman–Diaconis rule rounded up to a round number, kept between about 8 and 60 bins. Extent bins are whole
+ *  numbers wide and start on whole numbers, so every bar from the observed value rightwards counts toward p. */
+export function nullBins(draws, observed, integer) {
+  const n = draws.length;
+  const high = Math.max(1, observed, draws.reduce((a, b) => Math.max(a, b), 0));
+  const sorted = [...draws].sort((a, b) => a - b);
+  const spread = n > 1 ? quantile(sorted, 0.75) - quantile(sorted, 0.25) : 0;
+  const raw = spread > 0 ? 2 * spread / Math.cbrt(n) : high / 30;
+  const width = niceWidth(Math.min(Math.max(raw, high / 60), high / 8), integer);
+  const count = integer ? Math.floor(high / width) + 1 : Math.max(1, Math.ceil(high * 1.04 / width - 1e-9));
+  return Array.from({ length: count + 1 }, (_, i) => i * width);
+}
+
+/** Plain-language account of a component's corrected p-value (as p_value_sentence in native_results.py). */
+export function pValueSentence(draws, observed, metric, p, alpha) {
+  const n = draws.length.toLocaleString("en");
+  const exceed = draws.filter((d) => d >= observed).length;
+  const value = Number.isInteger(observed) ? String(observed) : fmt(observed, 4);
+  const count = exceed === 0 ? `None of the ${n}` : `${p <= alpha ? "Only " : ""}${exceed.toLocaleString("en")} of ${n}`;
+  return `${count} permutations produced a component at least as large as the observed component (${metric} = ${value}), `
+    + `yielding a family-wise corrected p = ${fmt(p, 4)}. One is added to both the numerator and denominator to account `
+    + "for the observed result when estimating the permutation p-value.";
+}
+
 function nullHistogram(ctx) {
   const { P, pal, w, comp, cfg, result } = ctx;
   const draws = result.null_max;
   const observed = Number(comp.test_stat);
-  const end = Math.max(1, observed, draws.length ? Math.max(...draws) : 1) * 1.1;
-  const bins = 24;
+  const integer = cfg.metric === "extent";
+  const limits = nullBins(draws, observed, integer);
+  const width = limits[1] - limits[0], bins = limits.length - 1, end = limits[bins];
   const counts = new Array(bins).fill(0);
-  for (const d of draws) counts[Math.min(bins - 1, Math.max(0, Math.floor(d / end * bins)))] += 1;
+  for (const d of draws) counts[Math.min(bins - 1, Math.max(0, Math.floor(d / width)))] += 1;
   const left = 112, right = w - 30, top = 96, bottom = 386;
-  P.text(left, 22, "Largest component in each permutation", { size: 13, bold: true });
+  P.text(left, 22, "Maximum component statistic in each permutation", { size: 13, bold: true });
   const high = yAxis(ctx, left, right, top, bottom - top, Math.max(1, ...counts), "Permutations");
   counts.forEach((count, i) => {
     if (!count) return;
-    const x1 = left + (right - left) * i / bins, x2 = left + (right - left) * (i + 1) / bins;
+    const x1 = left + (right - left) * limits[i] / end, x2 = left + (right - left) * limits[i + 1] / end;
+    const range = integer ? (width === 1 ? `${limits[i]}` : `${limits[i]}–${limits[i + 1] - 1}`)
+      : `${fmt(limits[i], 3)}–${fmt(limits[i + 1], 3)}`;
     P.rect(x1 + 1, bottom - (bottom - top) * count / high, x2 - x1 - 2, (bottom - top) * count / high, pal.context,
-           { title: `${count} permutation${count === 1 ? "" : "s"} with a largest component of ${fmt(end * i / bins, 3)}–${fmt(end * (i + 1) / bins, 3)}` });
+           { title: `${count} permutation${count === 1 ? "" : "s"} with a maximum component ${cfg.metric} of ${range}` });
   });
   const alpha = result.reporting.alpha;
   const critical = criticalValue(draws, alpha);
@@ -689,12 +734,10 @@ function nullHistogram(ctx) {
     P.line(tx, bottom, tx, bottom + 6, pal.axis);
     P.text(tx, bottom + 20, fmt(tick), { anchor: "center", color: pal.muted });
   }
-  P.text((left + right) / 2, bottom + 50, `Size of the largest component (${cfg.metric})`, { anchor: "center", size: 12, color: pal.muted });
+  P.text((left + right) / 2, bottom + 50, `Maximum component ${cfg.metric}`, { anchor: "center", size: 12, color: pal.muted });
   const items = [["box", pal.context, "Permutation maxima"], ["line", pal.component, `Component ${comp.id} (${fmt(observed)})`]];
   if (critical !== null) items.push(["line", pal.critical, `Critical value at α = ${fmt(alpha)} (${fmt(critical)})`, [3, 4]]);
   legend(ctx, left, 54, items);
-  const exceed = draws.filter((d) => d >= observed).length;
-  ctx.note = `Corrected p = (1 + ${exceed} permutation maxima ≥ ${fmt(observed)}) / (${draws.length.toLocaleString("en")} + 1) = `
-    + `${fmt(comp.p_fwe, 4)}.` + (critical !== null ? ` Components larger than ${fmt(critical)} are significant at α = ${fmt(alpha)}.` : "");
+  ctx.note = pValueSentence(draws, observed, cfg.metric, comp.p_fwe, alpha);
   return bottom + 74;
 }
