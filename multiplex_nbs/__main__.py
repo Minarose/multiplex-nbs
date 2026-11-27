@@ -30,7 +30,7 @@ def main(argv=None):
     run.add_argument("--threshold", type=float, default=3.0)
     run.add_argument("--tail", choices=["right", "left", "both"], default="right")
     run.add_argument("--metric", choices=["extent", "mass", "intensity"], default="extent")
-    run.add_argument("--n-perm", type=int, default=5000)
+    run.add_argument("--n-perm", type=int, default=9999)
     run.add_argument("--seed", type=int, default=1)
     run.add_argument("--alpha", type=float, default=0.05)
     run.add_argument("--layer", type=int, help="Classic NBS on a stack: the 1-based layer chosen in advance.")

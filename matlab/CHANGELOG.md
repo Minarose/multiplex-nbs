@@ -7,6 +7,7 @@ Maintained top-level utilities and the validated wrapper change the following be
 - Accept one-frequency connectivity matrices (MATLAB omits trailing singleton dimensions).
 - Correct mirrored p-value maps: the previous lower triangle included an additional 1.
 - Provide two-sided clustering as separate positive and negative components with one shared maximum across both signs.
+- Add `intensity` as a cluster metric beside `extent` and `mass`: mass minus `t0` for each kept edge, as in NBS Connectome. The GUI offers it as *Subtract the threshold from each edge* under Mass. Default to 9,999 permutations.
 - Add paired condition swaps, seeded independent-label shuffles, and optional within-block independent shuffles.
 - Reject contrasts/group labels that cannot vary under their permitted within-block shuffles.
 - Make serial operation the default. GLM `auto` now consistently resolves to Freedman–Lane.

@@ -52,11 +52,13 @@ MNBS_ANALYZE Network-based statistic for a stack of networks (Multiplex-NBS).
     opts   Optional struct with any of these fields (default in brackets):
              .t0             primary threshold                          [3]
              .tail           'right', 'left' or 'both'                  ['right']
-             .clusterMetric  'extent' (region-layer sites) or 'mass'    ['extent']
+             .clusterMetric  'extent' (region-layer sites), 'mass'      ['extent']
+                             (summed edge statistics) or 'intensity'
+                             (mass minus t0 per edge, as in NBS)
              .layerAdjacency 'consecutive' = Multiplex-NBS              ['consecutive']
                              'independent' = Layer-wise NBS (components
                              stay in their layer; one correction for all)
-             .nPerm          random permutations; use >= 5000 to report [1000]
+             .nPerm          random permutations; use >= 5000 to report [9999]
              .rngSeed        random seed                                [1]
              .alpha          reporting cutoff for result.significant    [0.05]
              .test           'two-sample' or 'paired'                   ['two-sample']
@@ -75,8 +77,8 @@ MNBS_ANALYZE Network-based statistic for a stack of networks (Multiplex-NBS).
   Output
     result  struct with fields
       .clusters     one element per observed component, with .nodes
-                    (regions), .layerBins (layers), .extent, .mass, .tail,
-                    .p_FWE and .nodeFreqIdx (sites)
+                    (regions), .layerBins (layers), .extent, .mass,
+                    .intensity, .tail, .p_FWE and .nodeFreqIdx (sites)
       .pvalues      corrected p-value of each component
       .significant  table of components with p_FWE <= opts.alpha (id,
                     nNodes, nFreqBins, freqMin, freqMax as layer indices,
@@ -301,13 +303,15 @@ MNBS_COMPONENTS Connected components of region-layer sites.
     nNodes          number of regions
     t0              primary threshold
     tail            'right', 'left' or 'both' (signs kept separate)  ['right']
-    clusterMetric   'extent' (number of sites) or 'mass'             ['extent']
+    clusterMetric   'extent' (number of sites), 'mass' or 'intensity' ['extent']
+                    (mass sums the edge statistics; intensity sums each
+                    minus t0, as in the NBS toolbox)
     layerAdjacency  'consecutive' or 'independent'                   ['consecutive']
 
   Output
     clusters  struct array: .nodes, .layerBins (also .freqBins), .extent,
-              .mass, .testStat (the chosen metric), .tail, .nodeFreqIdx
-              (sites), .nodeMask and .nodeMass
+              .mass, .intensity, .testStat (the chosen metric), .tail,
+              .nodeFreqIdx (sites), .nodeMask and .nodeMass
 
   See also MNBS_EDGESTAT_GROUP, MNBS_PERMUTE, MNBS_ANALYZE.
 

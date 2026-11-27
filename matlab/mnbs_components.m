@@ -15,13 +15,15 @@ function clusters = mnbs_components(Tef, iUT, jUT, nNodes, t0, tail, clusterMetr
 %     nNodes          number of regions
 %     t0              primary threshold
 %     tail            'right', 'left' or 'both' (signs kept separate)  ['right']
-%     clusterMetric   'extent' (number of sites) or 'mass'             ['extent']
+%     clusterMetric   'extent' (number of sites), 'mass' or 'intensity' ['extent']
+%                     (mass sums the edge statistics; intensity sums each
+%                     minus t0, as in the NBS toolbox)
 %     layerAdjacency  'consecutive' or 'independent'                   ['consecutive']
 %
 %   Output
 %     clusters  struct array: .nodes, .layerBins (also .freqBins), .extent,
-%               .mass, .testStat (the chosen metric), .tail, .nodeFreqIdx
-%               (sites), .nodeMask and .nodeMass
+%               .mass, .intensity, .testStat (the chosen metric), .tail,
+%               .nodeFreqIdx (sites), .nodeMask and .nodeMass
 %
 %   See also MNBS_EDGESTAT_GROUP, MNBS_PERMUTE, MNBS_ANALYZE.
 %
@@ -47,8 +49,8 @@ if strcmpi(tail,'both')
     return
 end
 validateattributes(t0, {'numeric'}, {'scalar','real','finite','positive'});
-if ~ismember(lower(clusterMetric), {'extent','mass'})
-    error('clusterMetric must be extent or mass.');
+if ~ismember(lower(clusterMetric), {'extent','mass','intensity'})
+    error('clusterMetric must be extent, mass or intensity.');
 end
 if any(~isfinite(Tef(:))), error('Statistic map must be finite.'); end
 
@@ -128,6 +130,12 @@ A = sparse([ii; jj], [jj; ii], true, nSites, nSites);
 A = A(activeIdx, activeIdx);
 cc = conncomp(graph(A));
 
+% Both endpoints of a kept edge share a component; label each edge by its first endpoint.
+siteLabel = zeros(nSites, 1);
+siteLabel(activeIdx) = cc;
+[edgeRows, edgeLayers] = find(supraEdge);
+edgeLabel = siteLabel(sub2ind([nNodes, nFreq], reshape(iUT(edgeRows), [], 1), edgeLayers(:)));
+
 % ------------------------------ summarize clusters
 nClust = max(cc);
 clusters = repmat(local_empty_cluster(), 1, nClust);
@@ -143,13 +151,17 @@ for c = 1:nClust
     massC   = sum(nodeMass(siteIdx), 'omitnan');
     if ~isfinite(massC), error('Cluster mass overflowed; check statistic scaling.'); end
 
+    intensityC = massC - t0 * nnz(edgeLabel == c);
+
     switch lower(clusterMetric)
         case 'extent'
             testStatC = extentC;
         case 'mass'
             testStatC = massC;
+        case 'intensity'
+            testStatC = intensityC;
         otherwise
-            error('Unknown clusterMetric: %s. Use ''extent'' or ''mass''.', clusterMetric);
+            error('Unknown clusterMetric: %s. Use ''extent'', ''mass'' or ''intensity''.', clusterMetric);
     end
 
     clusters(c).id            = c;
@@ -163,6 +175,7 @@ for c = 1:nClust
     clusters(c).siteCount     = extentC;   % retained for backward compatibility
     clusters(c).extent        = extentC;
     clusters(c).mass          = massC;
+    clusters(c).intensity     = intensityC;
     clusters(c).clusterMetric = lower(clusterMetric);
     clusters(c).testStat      = testStatC;
     clusters(c).nodeMask      = maskC;
@@ -183,6 +196,7 @@ s = struct( ...
     'siteCount', 0, ...
     'extent', 0, ...
     'mass', 0, ...
+    'intensity', 0, ...
     'clusterMetric', '', ...
     'testStat', 0, ...
     'nodeMask', [], ...

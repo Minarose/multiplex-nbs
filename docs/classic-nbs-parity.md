@@ -7,7 +7,7 @@ Select **Classic NBS** to test connected edges in one undirected network per obs
 | Inference domain | One matrix per observation, or one prespecified slice of a stack | All supplied layers |
 | Connections | Retained edges join their endpoints | Retained edges join endpoints within a layer. With consecutive adjacency, shared active nodes join neighboring layers |
 | Extent | Count of retained undirected edges | Count of distinct node–layer sites |
-| Weighted statistic | Intensity sums the excess above the primary threshold over retained edges | Mass sums the full tail-adjusted retained edge statistics |
+| Weighted statistic | Mass sums the full tail-adjusted retained edge statistics; intensity sums each minus the primary threshold | The same two choices, over the component's retained edges in every layer |
 | Correction | Largest component within the selected matrix, across requested tails | Largest component across layers and requested tails |
 | Result index | The analyzed slice has local index 1. The report includes its original layer number and axis value | Layer indices follow the input stack |
 
@@ -21,9 +21,9 @@ Python accepts classic input shaped observations × nodes × nodes. Numeric MATL
 multiplex-nbs run data.npz --method classic --layer 3 --metric extent --output classic.json
 ```
 
-A single-layer input defaults to layer 1. In Python use `classic_nbs(data, layer=3, metric="intensity")`; in MATLAB, classic NBS is available through the original NBS Connectome toolbox. The weighted metric in multiplex mode remains `mass`.
+A single-layer input defaults to layer 1. In Python use `classic_nbs(data, layer=3, metric="intensity")`; in MATLAB, classic NBS is available through the original NBS Connectome toolbox. Every method accepts `extent`, `mass` or `intensity`. In the apps, intensity is chosen by selecting Mass and ticking **Subtract the threshold from each edge**.
 
-Classic CSV files identify inference mode, extent unit, intensity, tested metric, and the original input layer. JSON/MAT retain the full statistic map, positive or negative component membership, threshold, null maxima, and analysis settings. Raw statistic mass remains available as a descriptive quantity.
+CSV files identify inference mode, extent unit, mass, intensity, tested metric, and, for Classic NBS, the original input layer. JSON/MAT retain the full statistic map, positive or negative component membership, threshold, null maxima, and analysis settings. Raw statistic mass remains available as a descriptive quantity.
 
 ## Reference check
 

@@ -28,6 +28,7 @@ receives the same order-based adjacency. See [Interpreting results](interpreting
 for what a component does and does not show.
 * **Extent:** number of unique node–layer sites in the component.
 * **Mass:** sum of tail-adjusted edge statistics, allocating half to each endpoint. Since a retained edge's endpoints belong to the same component, the two halves conserve its entire contribution. This is raw statistic mass, not excess above the primary threshold.
+* **Intensity:** mass with the primary threshold subtracted once for each retained edge, i.e. the summed excess above the threshold, as in NBS Connectome. In the apps, select Mass and tick *Subtract the threshold from each edge*.
 
 Extent is not an edge count. Even with one layer, a three-node chain has extent
 3 here and edge extent 2 in conventional NBS. A three-node triangle also has

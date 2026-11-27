@@ -211,7 +211,7 @@ TAB_HINTS = {
     "brain": "The component on a glass brain, one layer at a time. Press Play to step through the layers, or drag the slider.",
     "network": "The component one layer at a time. Press Play to step through the layers, or drag the slider.",
     "layers": "Every layer the component spans, side by side. Click a panel to open that layer in the Brain tab.",
-    "null": ("How the extent or mass of the selected component compares with the maximum component statistic "
+    "null": ("How the extent, mass or intensity of the selected component compares with the maximum component statistic "
              "obtained in each permutation."),
 }
 
@@ -320,6 +320,8 @@ class ResultsView(ttk.Frame):
             return
         self.cfg, self.data = self.result["config"], self.result["dataset"]
         self.classic = self.cfg["inference_mode"] == "classic"
+        # The weighted statistic shown beside extent: intensity when chosen, otherwise mass.
+        self.weight = "intensity" if self.cfg.get("metric") == "intensity" else "mass"
         self.axis = self.data["axis"]
         self.layers = len(self.axis["values"])
         self.edges = np.asarray(self.result["edges"], dtype=int).reshape(-1, 2) - 1
@@ -418,7 +420,7 @@ class ResultsView(ttk.Frame):
         table.columnconfigure(0, weight=1)
         cols = ("id", "sign", "p", "extent", "weight", "nodes", "layers", "members")
         headings = ("Component", "Sign", "Corrected p", "Extent (edges)" if self.classic else "Extent (sites)",
-                    "Intensity" if self.classic else "Mass", "Regions",
+                    self.weight.capitalize(), "Regions",
                     "Input layer" if self.classic else f"{self.axis['name']}", "Member regions")
         self.tree = ttk.Treeview(table, columns=cols, show="headings", selectmode="browse", height=5)
         for key, heading, width in zip(cols, headings, (100, 60, 110, 120, 90, 80, 150, 320)):
@@ -617,7 +619,7 @@ class ResultsView(ttk.Frame):
             members = ", ".join(labels[i - 1] for i in c["nodes"][:4]) + (" …" if len(c["nodes"]) > 4 else "")
             self.tree.insert("", "end", iid=str(c["id"]), values=(
                 c["id"], self._sign(c), f"{c['p_fwe']:.4g}", c["extent"],
-                f"{c['intensity' if self.classic else 'mass']:.4g}", c["n_nodes"],
+                f"{c.get(self.weight, c['mass']):.4g}", c["n_nodes"],
                 self.cfg["classic_layer"] if self.classic else
                 f"{_range_label(values, self.axis['unit'])} ({len(values)})", members))
         self.tree.configure(height=max(3, min(8, len(visible))))
@@ -700,7 +702,7 @@ class ResultsView(ttk.Frame):
         rows = [("Corrected p", f"{c['p_fwe']:.4g}" + ("" if c["p_fwe"] <= alpha else " (not significant)")),
                 ("Effect", self._direction(c)),
                 ("Extent", f"{c['extent']} {'edges' if self.classic else 'region–layer sites'}"),
-                ("Intensity" if self.classic else "Mass", f"{c['intensity' if self.classic else 'mass']:.4g}"),
+                (self.weight.capitalize(), f"{c.get(self.weight, c['mass']):.4g}"),
                 ("Regions", str(c["n_nodes"]))]
         if self.classic:
             rows.append(("Input layer", f"{self.cfg['classic_layer']}"))

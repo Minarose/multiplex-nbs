@@ -216,7 +216,7 @@ def describe(data):
 # Inference
 # ----------------------------------------------------------------------------------------
 def nbs(data, group=None, *, method="multiplex", design=None, threshold=3.0, tail="right", metric="extent",
-        n_perm=5000, seed=1, alpha=0.05, layer=None, permutation="auto", use_abs=False, progress=None, name=None,
+        n_perm=9999, seed=1, alpha=0.05, layer=None, permutation="auto", use_abs=False, progress=None, name=None,
         **dataset):
     """Network-based statistic for one network or a stack of networks.
 
@@ -248,12 +248,14 @@ def nbs(data, group=None, *, method="multiplex", design=None, threshold=3.0, tai
         Direction tested. ``"both"`` forms positive and negative components separately
         and corrects over both with one maximum.
     metric : {"extent", "mass", "intensity"}
-        Component size. ``"extent"``: region–layer sites (multiplex/layer-wise) or edges
-        (classic). ``"mass"``: summed statistic (multiplex/layer-wise). ``"intensity"``:
-        summed excess over the threshold (classic, as in NBS Connectome v1.2).
+        Component statistic, available for every method. ``"extent"``: region–layer
+        sites (multiplex/layer-wise) or edges (classic). ``"mass"``: the summed
+        statistic of the component's suprathreshold edges. ``"intensity"``: mass with the
+        threshold subtracted from each edge, i.e. the summed excess over the threshold
+        (intensity in NBS Connectome v1.2).
     n_perm : int
-        Number of random permutations. The smallest attainable p is 1/(n_perm + 1); use
-        at least 5000 for reported results.
+        Number of random permutations (default 9999). The smallest attainable p is
+        1/(n_perm + 1); use at least 5000 for reported results.
     seed : int or None
         Random seed, for reproducibility.
     alpha : float
@@ -369,8 +371,8 @@ def classic_nbs(data, group=None, *, layer=None, metric="extent", **options):
     """Classic NBS (Zalesky et al., 2010) on one network per observation.
 
     For a stack of networks, choose one ``layer`` (1-based) in advance. ``metric`` is
-    ``"extent"`` (number of edges) or ``"intensity"`` (summed excess over the
-    threshold). Equivalent to ``nbs(data, group, method="classic", ...)``; see
+    ``"extent"`` (number of edges), ``"mass"`` (summed edge statistics) or
+    ``"intensity"`` (summed excess over the threshold, as in NBS Connectome). Equivalent to ``nbs(data, group, method="classic", ...)``; see
     :func:`nbs`. See ``docs/classic-nbs-parity.md`` for agreement with NBS v1.2.
     """
     return nbs(data, group, method="classic", layer=layer, metric=metric, **options)
@@ -393,7 +395,7 @@ def components(result, significant_only=False):
     -------
     list of dict
         Each with ``id``, ``p_fwe``, ``significant``, ``direction`` ("positive",
-        "negative" or "F"), ``extent``, ``mass`` (or ``intensity`` for classic),
+        "negative" or "F"), ``extent``, ``mass``, ``intensity``,
         ``n_regions``, ``regions`` (labels), ``region_indices`` (1-based),
         ``layers`` (1-based indices) and ``axis_values`` (values of those layers).
     """
@@ -401,7 +403,6 @@ def components(result, significant_only=False):
     data = result.get("dataset", {})
     labels = data.get("node_labels")
     axis_values = data.get("axis", {}).get("values")
-    classic = result["config"].get("inference_mode") == "classic"
     rows = []
     for c in sorted(result["clusters"], key=lambda c: (c["p_fwe"], -c["test_stat"], c["id"])):
         if significant_only and c["p_fwe"] > alpha:
@@ -412,7 +413,8 @@ def components(result, significant_only=False):
                "regions": [labels[n - 1] for n in c["nodes"]] if labels else list(c["nodes"]),
                "layers": list(c["layer_bins"]),
                "axis_values": [axis_values[b - 1] for b in c["layer_bins"]] if axis_values else list(c["layer_bins"])}
-        row["intensity" if classic else "mass"] = c["intensity"] if classic else c["mass"]
+        row["mass"] = c["mass"]
+        row["intensity"] = c.get("intensity")
         rows.append(row)
     return rows
 

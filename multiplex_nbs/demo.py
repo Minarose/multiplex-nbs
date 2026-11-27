@@ -57,7 +57,7 @@ def make_brain_demo(seed=7):
             "axis_unit": "ms",
             "note": "The recovered component may include noise sites. Component significance does not establish significance at every displayed node, edge, or layer.",
         },
-        "suggested_config": {"design": "two-sample", "threshold": 3, "tail": "right", "metric": "extent", "n_perm": 999, "seed": 1, "alpha": .05},
+        "suggested_config": {"design": "two-sample", "threshold": 3, "tail": "right", "metric": "extent", "n_perm": 9999, "seed": 1, "alpha": .05},
     }
     return {
         "W": weights,

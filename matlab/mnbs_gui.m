@@ -24,8 +24,8 @@ head=uilabel(outer,'Text','Multiplex-NBS','FontSize',27,'FontWeight','bold','Fon
 head.Layout.Column=[1 2];
 sidebar=uipanel(outer,'Title','Set up an analysis','BackgroundColor',surface,'FontSize',15);
 sidebar.Layout.Row=2; sidebar.Layout.Column=1;
-form=uigridlayout(sidebar,[23 2],'ColumnWidth',{'1x','1x'}, ...
-    'RowHeight',{30,34,46,23,30,23,30,23,30,23,30,23,30,23,30,23,30,28,34,34,40,'1x',30},'Padding',[14 12 14 12],'RowSpacing',4,'Scrollable','on');
+form=uigridlayout(sidebar,[24 2],'ColumnWidth',{'1x','1x'}, ...
+    'RowHeight',{30,34,46,23,30,23,30,23,30,23,30,23,30,23,30,26,23,30,28,34,34,40,'1x',30},'Padding',[14 12 14 12],'RowSpacing',4,'Scrollable','on');
 form.BackgroundColor=surface;
 section=uilabel(form,'Text','1  Choose your data','FontWeight','bold','FontColor',accent); section.Layout.Column=[1 2];
 loadButton=uibutton(form,'Text','Open MAT file','ButtonPushedFcn',@loadData); loadButton.Layout.Row=2; loadButton.Layout.Column=1;
@@ -44,15 +44,20 @@ label(form,'Direction / tail',12);
 tail=uidropdown(form,'Items',{'Right (positive)','Left (negative)','Both (joint correction)'},'ValueChangedFcn',@invalidate); tail.Layout.Row=13; tail.Layout.Column=[1 2];
 label(form,'Cluster statistic',14);
 metric=uidropdown(form,'Items',{'Extent: node-layer sites','Mass: summed edge statistics'},'ValueChangedFcn',@invalidate); metric.Layout.Row=15; metric.Layout.Column=[1 2];
-label(form,'Permutations                     Random seed',16);
-perms=uieditfield(form,'numeric','Value',1000,'Limits',[1 Inf],'RoundFractionalValues','on','ValueChangedFcn',@invalidate); perms.Layout.Row=17; perms.Layout.Column=1;
-seed=uieditfield(form,'numeric','Value',1,'Limits',[0 2^32-1],'RoundFractionalValues','on','ValueChangedFcn',@invalidate); seed.Layout.Row=17; seed.Layout.Column=2;
-absolute=uicheckbox(form,'Text','Use absolute connectivity','Value',false,'ValueChangedFcn',@invalidate); absolute.Layout.Row=18; absolute.Layout.Column=[1 2];
-runButton=uibutton(form,'Text','Run analysis','FontWeight','bold','BackgroundColor',accent,'FontColor',background,'ButtonPushedFcn',@runAnalysis,'Enable','off'); runButton.Layout.Row=19; runButton.Layout.Column=[1 2];
-exportButton=uibutton(form,'Text','Save results and summary','ButtonPushedFcn',@exportResults,'Enable','off'); exportButton.Layout.Row=20; exportButton.Layout.Column=[1 2];
-notes=uilabel(form,'Text','Group direction: lower label minus higher label. Paired: first row minus second row within each ID.','WordWrap','on','FontSize',11); notes.Layout.Row=21; notes.Layout.Column=[1 2];
-helpButton=uibutton(form,'Text','Input guide','ButtonPushedFcn',@showHelp); helpButton.Layout.Row=23; helpButton.Layout.Column=1;
-classicButton=uibutton(form,'Text','Original NBS','ButtonPushedFcn',@openOriginalNBS); classicButton.Layout.Row=23; classicButton.Layout.Column=2;
+% Intensity is mass with the threshold subtracted from each edge, offered only under Mass.
+subtract=uicheckbox(form,'Text','Subtract the threshold from each edge (= NBS intensity)','Value',false,'Enable','off', ...
+    'Tooltip',['Sums each edge statistic minus the threshold instead of the full statistic. This equals ' ...
+    'intensity in the NBS toolbox, and results are labelled intensity.'],'ValueChangedFcn',@invalidate);
+subtract.Layout.Row=16; subtract.Layout.Column=[1 2];
+label(form,'Permutations                     Random seed',17);
+perms=uieditfield(form,'numeric','Value',9999,'Limits',[1 Inf],'RoundFractionalValues','on','ValueChangedFcn',@invalidate); perms.Layout.Row=18; perms.Layout.Column=1;
+seed=uieditfield(form,'numeric','Value',1,'Limits',[0 2^32-1],'RoundFractionalValues','on','ValueChangedFcn',@invalidate); seed.Layout.Row=18; seed.Layout.Column=2;
+absolute=uicheckbox(form,'Text','Use absolute connectivity','Value',false,'ValueChangedFcn',@invalidate); absolute.Layout.Row=19; absolute.Layout.Column=[1 2];
+runButton=uibutton(form,'Text','Run analysis','FontWeight','bold','BackgroundColor',accent,'FontColor',background,'ButtonPushedFcn',@runAnalysis,'Enable','off'); runButton.Layout.Row=20; runButton.Layout.Column=[1 2];
+exportButton=uibutton(form,'Text','Save results and summary','ButtonPushedFcn',@exportResults,'Enable','off'); exportButton.Layout.Row=21; exportButton.Layout.Column=[1 2];
+notes=uilabel(form,'Text','Group direction: lower label minus higher label. Paired: first row minus second row within each ID.','WordWrap','on','FontSize',11); notes.Layout.Row=22; notes.Layout.Column=[1 2];
+helpButton=uibutton(form,'Text','Input guide','ButtonPushedFcn',@showHelp); helpButton.Layout.Row=24; helpButton.Layout.Column=1;
+classicButton=uibutton(form,'Text','Original NBS','ButtonPushedFcn',@openOriginalNBS); classicButton.Layout.Row=24; classicButton.Layout.Column=2;
 content=uigridlayout(outer,[4 1],'RowHeight',{50,'1.3x','1x','0.8x'},'Padding',[0 0 0 0]); content.Layout.Row=2; content.Layout.Column=2;
 content.BackgroundColor=background;
 status=uilabel(content,'Text','Explore connected effects across nodes and time, frequency, or another axis.','WordWrap','on','FontSize',16,'FontColor',ink);
@@ -75,7 +80,7 @@ end
 for control=reshape(findall(fig,'-property','FontName'),1,[])
     control.FontName='Arial';
 end
-controls={axisName,axisUnit,adjacency,loadButton,demoButton,test,threshold,tail,metric,perms,seed,absolute,runButton};
+controls={axisName,axisUnit,adjacency,loadButton,demoButton,test,threshold,tail,metric,subtract,perms,seed,absolute,runButton};
 
     function openOriginalNBS(~,~)
         if exist('NBS','file') ~= 2
@@ -90,7 +95,7 @@ controls={axisName,axisUnit,adjacency,loadButton,demoButton,test,threshold,tail,
         [W,group,frequencies,nodeLabels]=mnbs_demo(); model=[]; blocks=[];
         axisName.Value='Frequency'; axisUnit.Value='Hz'; adjacency.Value='consecutive';
         datasetName='Synthetic demonstration'; test.Value='Independent groups';
-        tail.Value='Right (positive)'; threshold.Value=3; perms.Value=1000;
+        tail.Value='Right (positive)'; threshold.Value=3; perms.Value=9999;
         dataReady();
     end
     function loadData(~,~)
@@ -145,8 +150,12 @@ controls={axisName,axisUnit,adjacency,loadButton,demoButton,test,threshold,tail,
         info.Text=sprintf('%s\n%d observations · %d nodes · %d layers',datasetName,S,N,F);
         status.Text='Data loaded. Choose your analysis settings, then run.';
     end
+    function syncSubtract()
+        if startsWith(metric.Value,'Mass') && ~busy, subtract.Enable='on'; else, subtract.Enable='off'; end
+    end
     function invalidate(varargin)
         if busy, return; end
+        syncSubtract();
         switch test.Value
             case 'Independent groups', notes.Text='Positive direction: lower numeric group label minus higher label.';
             case 'Paired observations', notes.Text='Positive direction: first row minus second row within each pair ID.';
@@ -162,7 +171,8 @@ controls={axisName,axisUnit,adjacency,loadButton,demoButton,test,threshold,tail,
         cleanup=onCleanup(@finishRun); %#ok<NASGU>
         try
             tails={'right','left','both'}; tailIndex=find(strcmp(tail.Value,tail.Items));
-            metricName='extent'; if startsWith(metric.Value,'Mass'), metricName='mass'; end
+            metricName='extent';
+            if startsWith(metric.Value,'Mass'), metricName='mass'; if subtract.Value, metricName='intensity'; end; end
             options=struct('t0',threshold.Value,'tail',tails{tailIndex}, ...
                 'clusterMetric',metricName,'nPerm',perms.Value,'rngSeed',seed.Value, ...
                 'useAbs',absolute.Value,'exchangeBlocks',blocks,'progress',@updateProgress, ...
@@ -196,7 +206,7 @@ controls={axisName,axisUnit,adjacency,loadButton,demoButton,test,threshold,tail,
         function finishRun()
             if isvalid(progress), close(progress); end
             busy=false;
-            if isvalid(fig), setControls('on'); end
+            if isvalid(fig), setControls('on'); syncSubtract(); end
         end
     end
     function setControls(value)
@@ -224,8 +234,10 @@ controls={axisName,axisUnit,adjacency,loadButton,demoButton,test,threshold,tail,
         title(histogramAxes,'Null maximum distribution');
         if ~isempty(C)
             xline(histogramAxes,max([C.testStat]),'--','Largest observed','Color',[0.75 0.28 0.16],'LineWidth',1.5);
-            clusterTable.Data=table([C.id]',string({C.tail})',[C.extent]',[C.mass]',[C.p_FWE]', ...
-                'VariableNames',{'Cluster','Tail','Extent','Mass','p_FWE'});
+            weightName='Mass'; weights=[C.mass]';
+            if strcmp(result.options.clusterMetric,'intensity'), weightName='Intensity'; weights=[C.intensity]'; end
+            clusterTable.Data=table([C.id]',string({C.tail})',[C.extent]',weights,[C.p_FWE]', ...
+                'VariableNames',{'Cluster','Tail','Extent',weightName,'p_FWE'});
         else
             clusterTable.Data=table();
         end
