@@ -32,6 +32,9 @@ class ClusterTests(unittest.TestCase):
             self.assertEqual([c["test_stat"] for c in classic], [4.25, 5])
             self.assertEqual([c["mass"] for c in classic], [16.25, 8])
             self.assertEqual([c["n_nodes"] for c in classic], [4, 2])
+            mass = build_clusters(np.array(statistic) * sign, edges, 6, threshold=3,
+                                  tail=tail, metric="mass", inference_mode="classic")
+            self.assertEqual([c["test_stat"] for c in mass], [16.25, 8])
 
     def test_node_frequency_links_and_mass(self):
         edges = [[0, 1], [0, 2], [1, 2], [2, 3]]
@@ -42,6 +45,12 @@ class ClusterTests(unittest.TestCase):
         self.assertEqual(clusters[0]["mass"], 15)
         self.assertEqual(clusters[0]["sites"], [[1, 1], [2, 1], [1, 2], [3, 2], [3, 3], [4, 3]])
         self.assertEqual(clusters[0]["test_stat"], 15)
+        # Intensity subtracts the threshold once per retained edge: 15 - 3 edges x 3.
+        self.assertEqual(clusters[0]["intensity"], 6)
+        intensity = build_clusters(t, edges, 4, threshold=3, metric="intensity")
+        self.assertEqual(intensity[0]["test_stat"], 6)
+        layerwise = build_clusters(t, edges, 4, threshold=3, metric="intensity", layer_adjacency="independent")
+        self.assertEqual(sorted(c["intensity"] for c in layerwise), [1, 2, 3])
 
     def test_missing_middle_bin_breaks_connection(self):
         clusters = build_clusters([[4, 0, 4]], [[0, 1]], 2)
@@ -92,7 +101,7 @@ class AnalysisTests(unittest.TestCase):
         # Any subset of the three possible edges on three nodes is connected.
         layer = self.w[..., 1]
         vals = self.y.reshape(24, 3, 2)[..., 1]
-        for metric in ["extent", "intensity"]:
+        for metric in ["extent", "mass", "intensity"]:
             settings = dict(group=self.group, inference_mode="classic", metric=metric,
                             threshold=.65, tail="both", n_perm=15, seed=119)
             run = analyze(self.w, classic_layer=2, **settings)
@@ -107,6 +116,8 @@ class AnalysisTests(unittest.TestCase):
                 t = stats.ttest_ind(vals[group == 0], vals[group == 1], equal_var=False).statistic
                 if metric == "extent":
                     scores = [(sign * t > .65).sum() for sign in (1, -1)]
+                elif metric == "mass":
+                    scores = [np.where(sign * t > .65, sign * t, 0).sum() for sign in (1, -1)]
                 else:
                     scores = [np.maximum(sign * t - .65, 0).sum() for sign in (1, -1)]
                 maxima.append(max(scores))
@@ -114,7 +125,7 @@ class AnalysisTests(unittest.TestCase):
             for component in run["clusters"]:
                 self.assertEqual(component["p_fwe"], (1 + sum(n >= component["test_stat"] for n in run["null_max"])) / 16)
 
-        for options in [{}, {"classic_layer": 3}, {"classic_layer": 1, "metric": "mass"}]:
+        for options in [{}, {"classic_layer": 3}, {"classic_layer": 1, "metric": "size"}]:
             with self.assertRaises(ValueError):
                 self.run_analysis(inference_mode="classic", **options)
 
@@ -130,7 +141,7 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(run["dataset"]["layer_count"], 1)
         self.assertIn("input layer 2 (Frequency = 12 Hz)", run["methods"])
         self.assertIn("retained edges", run["methods"])
-        self.assertIn(b"extent (edges) | intensity", result_text(run))
+        self.assertIn(b"extent (edges) | mass", result_text(run))
         self.assertIn(b"classic,extent,edges", result_csv(run))
         for kind in ("mat", "npz"):
             f = BytesIO()

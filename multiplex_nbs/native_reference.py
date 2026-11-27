@@ -14,10 +14,11 @@ TOPICS = {
 }
 
 LEADS = {
-    "method": ("All three methods threshold the edge statistics, group the edges that pass into connected components, "
-               "and give each component one family-wise corrected p-value by permutation. They differ in what counts "
-               "as connected."),
-    "interpret": "The corrected p-value belongs to the whole component, not to any single region, edge or layer.",
+    "method": ("All three methods identify connected components from suprathreshold edge statistics and evaluate "
+               "their extent or mass against permutation-derived null distributions. They differ in how connected "
+               "components are defined and how layers are incorporated into the analysis."),
+    "interpret": ("The corrected p-value applies to the connected component as a whole, not to individual edges, "
+                  "regions, or layers."),
     "inputs": ("One undirected connectivity matrix per participant, or one matrix per layer, with the same regions "
                "in the same order for everyone."),
     "cite": f"Multiplex-NBS {__version__}. Record the version and your settings (shown with every result) when you report an analysis.",
@@ -52,12 +53,18 @@ def _method_cards(app, parent):
     row = ttk.Frame(parent)
     row.pack(fill="x", pady=(18, 0))
     details = {
-        "classic": ("Use for one network, or one layer chosen in advance.",
-                    "Component size: edges (extent) or summed excess over the threshold (intensity)."),
-        "layerwise": ("Use to find which layers show an effect, with one correction across all of them.",
-                      "Component size: region–layer sites (extent) or summed statistics (mass), within a layer."),
-        "multiplex": ("Use when an effect may continue across neighbouring frequencies or time points.",
-                      "Component size: region–layer sites (extent) or summed statistics (mass), across layers."),
+        "classic": ("Identifies connected components within a single adjacency matrix, with significance assessed "
+                    "through permutation testing.",
+                    "Component statistic: number of suprathreshold edges (extent) or summed edge statistics "
+                    "(mass), optionally with the threshold subtracted (intensity)."),
+        "layerwise": ("Identifies connected components independently within each layer, with permutation testing "
+                      "controlling family-wise error across all layers.",
+                      "Component statistic: number of region–layer sites (extent) or summed edge statistics "
+                      "(mass), optionally with the threshold subtracted (intensity), within each layer."),
+        "multiplex": ("Links active regions across adjacent layers, allowing connected components to evolve without "
+                      "requiring identical edges across layers. Significance is assessed through permutation testing.",
+                      "Component statistic: number of region–layer sites (extent) or summed edge statistics "
+                      "(mass), optionally with the threshold subtracted (intensity), across layers."),
     }
     cards = []
     for key, name in METHODS.items():
@@ -93,6 +100,9 @@ def reference_page(app, parent, topic):
 
     if topic == "method":
         _method_cards(app, parent)
+        paragraph(parent, "Within a single layer, edge-based and node-based approaches identify the same connected "
+                  "components, but extent counts edges in Classic NBS and participating regions in the node-based "
+                  "methods.", "Muted.TLabel", pady=(18, 0))
         section(parent, "How the correction works", bullets=(
             "Compute a test statistic for every edge in every layer, such as Welch's t for two groups.",
             "Keep the edges above the primary threshold and find the connected components.",
@@ -116,22 +126,28 @@ def reference_page(app, parent, topic):
         ))
     elif topic == "interpret":
         _figure(app, parent, draw_null_sketch, 230)
-        section(parent, "What you can say", "The network differed between conditions across this set of regions "
-                "and layers, with the corrected p-value for the component.")
+        section(parent, "What you can say", "A significant component identifies a connected pattern of network "
+                "differences or associations that is unlikely under the null hypothesis, after correction for "
+                "multiple comparisons. The component identifies the regions and layers contributing to this pattern.")
         section(parent, "What you cannot say", bullets=(
-            "That any one edge, region or layer inside the component is significant on its own.",
-            "That the first and last layers mark where the effect starts or stops. The span is descriptive.",
+            "That any individual edge, region, or layer within a significant component is independently significant.",
+            "That the component's boundaries identify precisely where an effect begins or ends. Its spatial and "
+            "layer-wise extent is descriptive.",
         ))
-        section(parent, "Decide in advance", "Choose the method, threshold, tail and component measure before "
-                "looking at results. Trying several settings and keeping the best one adds comparisons that the "
-                "correction does not cover.")
+        section(parent, "Decide in advance", "Choose the method, primary threshold, statistical contrast, and "
+                "component metric before confirmatory analysis. Exploring alternative settings can help assess "
+                "robustness, but selecting results based on significance introduces additional comparisons not "
+                "accounted for by the permutation correction.")
         section(parent, "Assumptions", bullets=(
-            "Shuffling group labels assumes participants are exchangeable when there is no effect.",
-            "Sign flips (paired and one-sample tests) assume differences are symmetric around zero under the null.",
-            "Residual permutation with covariates (Freedman–Lane) is approximate.",
+            "Unrestricted label permutation requires observations to be exchangeable under the null hypothesis.",
+            "Paired comparisons require permutations that preserve subject pairing, such as within-subject "
+            "condition swaps or sign-flipping paired differences.",
+            "Freedman–Lane permutation accommodates nuisance regressors by permuting residuals from a reduced GLM. "
+            "Validity depends on the error structure and exchangeability assumptions.",
         ))
-        section(parent, "Example", "In the demo, Classic NBS at 100 ms found a component of 3 edges joining 4 "
-                "regions (intensity 8.36, corrected p = .010; threshold 3, 99 permutations, seed 1).")
+        section(parent, "Example", "In the demonstration dataset, Classic NBS at 100 ms identified a component "
+                "containing 3 edges connecting 4 regions (intensity = 8.36, FWE-corrected p = 0.0001; primary "
+                "threshold = 3, 9,999 permutations).")
     elif topic == "inputs":
         _figure(app, parent, draw_data_sketch, 210)
         section(parent, "One combined file", bullets=(
@@ -156,6 +172,12 @@ def reference_page(app, parent, topic):
                 "differences in brain networks. NeuroImage (2010) 53: 1197–1207. doi:10.1016/j.neuroimage.2010.06.041")
         ttk.Button(parent, text="Copy DOI link",
                    command=lambda: app.copy("https://doi.org/10.1016/j.neuroimage.2010.06.041")).pack(anchor="w")
+        section(parent, "Statistical foundations", bullets=(
+            "Nichols TE, Holmes AP. Nonparametric permutation tests for functional neuroimaging: a primer with "
+            "examples. Human Brain Mapping (2002) 15: 1–25. doi:10.1002/hbm.1058",
+            "Maris E, Oostenveld R. Nonparametric statistical testing of EEG- and MEG-data. Journal of "
+            "Neuroscience Methods (2007) 164: 177–190. doi:10.1016/j.jneumeth.2007.03.024",
+        ))
         section(parent, "Software contributors", "Minarose M. Ismail¹˒² · Brady J. Williamson³ · Darren S. Kadis¹˒²")
         paragraph(parent, "¹ Department of Physiology, University of Toronto, Toronto, Canada\n"
                           "² Neurosciences & Mental Health, The Hospital for Sick Children, Toronto, Canada\n"

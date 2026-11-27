@@ -426,9 +426,8 @@ class NativeApp:
         subtitle.pack(anchor="w", pady=(10, 0))
         intro = ttk.Frame(head)
         lead = ttk.Label(intro, style="Lead.TLabel", justify="left", text=(
-            "Compare connectivity between groups or conditions. Edges above a threshold are grouped into "
-            "connected components, and each component receives a family-wise corrected p-value, in one "
-            "network or across time points or frequency bands."))
+            "Multiplex-NBS tests group or condition differences in network connectivity, evaluating the extent "
+            "or mass of connected components against permutation-derived null distributions."))
         lead.pack(anchor="w")
         actions = ttk.Frame(intro)
         actions.pack(anchor="w", pady=(24, 0))
@@ -527,7 +526,7 @@ class NativeApp:
         layered = description["layer_count"] > 1
         self.config=dict(design=description["suggested_design"] or "",inference_mode=engine or
                          ("multiplex" if layered else "classic"),
-                         threshold=3.,tail="right",metric="extent",n_perm=999,alpha=.05,seed=1,method="auto",use_abs=False,
+                         threshold=3.,tail="right",metric="extent",n_perm=9999,alpha=.05,seed=1,method="auto",use_abs=False,
                          layer_adjacency="independent" if mode == "layerwise" else
                          ("consecutive" if layered else description["axis"]["adjacency"]))
         if self.config["inference_mode"]=="classic" and description["layer_count"]==1:
@@ -542,7 +541,6 @@ class NativeApp:
             if kind!="brain-network":
                 dataset["demo_info"]={"title":f"Simulated {kind} study","simulation_note":"All measurements, observations and effects are simulated."}
             self.load_data(dataset,"Structural brain network · simulated study" if kind=="brain-network" else f"Simulated {kind} study",mode)
-            self.config["n_perm"] = 99
             if kind=="paired": self.config["design"]="paired"
             if self.config["inference_mode"]=="classic":
                 self.config["classic_layer"]=min(3,self.description["layer_count"])
@@ -663,6 +661,11 @@ def native_self_test(progress=lambda message: None):
                 app.open_demo(mode)
             if app.page != "model":
                 raise RuntimeError(f"{mode} demo did not reach its model")
+            if app.config["n_perm"] != 9999:
+                raise RuntimeError(f"The {mode} demo does not default to 9,999 permutations")
+            app.config["n_perm"] = 99  # keeps the self-test quick and able to check the p-value floor
+            app._invalidate("model")
+            app.show("model")
             app.show("method")
             app.show(app.return_page)
             form = list(descendants(app.pages["model"]))

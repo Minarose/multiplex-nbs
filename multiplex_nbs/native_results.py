@@ -205,12 +205,14 @@ TABS_STACK = (("profile", "Layer profile"), ("membership", "Node × layer"), ("b
               ("layers", "All layers"), ("null", "Null distribution"))
 TABS_SINGLE = (("brain", "Brain"), ("null", "Null distribution"))
 TAB_HINTS = {
-    "profile": "How much of the network passes the threshold in each layer, and how much of it belongs to this component.",
+    "profile": ("Distribution of suprathreshold edges and participating regions across layers, highlighting those "
+                "belonging to the selected component."),
     "membership": "Which regions belong to the component, and in which layers.",
     "brain": "The component on a glass brain, one layer at a time. Press Play to step through the layers, or drag the slider.",
     "network": "The component one layer at a time. Press Play to step through the layers, or drag the slider.",
     "layers": "Every layer the component spans, side by side. Click a panel to open that layer in the Brain tab.",
-    "null": "How this component's size compares with the largest component found by chance in each permutation.",
+    "null": ("How the extent, mass or intensity of the selected component compares with the maximum component statistic "
+             "obtained in each permutation."),
 }
 
 
@@ -228,6 +230,47 @@ def _nice_ticks(high, most=6):
         step = max(1, round(step))
     count = math.ceil(high / step - 1e-9)
     return [round(i * step, 10) for i in range(count + 1)]
+def p_value_sentence(draws, observed, metric, p, alpha):
+    """Plain-language account of a component's corrected p-value."""
+    n = len(draws)
+    exceed = int(np.count_nonzero(np.asarray(draws, dtype=float) >= observed))
+    value = f"{observed:g}" if float(observed).is_integer() else f"{observed:.4g}"
+    count = f"None of the {n:,}" if exceed == 0 else f"{'Only ' if p <= alpha else ''}{exceed:,} of {n:,}"
+    return (f"{count} permutations produced a component at least as large as the observed component "
+            f"({metric} = {value}), yielding a family-wise corrected p = {p:.4g}. One is added to both the numerator "
+            "and denominator to account for the observed result when estimating the permutation p-value.")
+
+
+def _nice_width(raw, integer=False):
+    """The smallest width of 1, 2, 2.5 or 5 times a power of ten that is at least raw (whole numbers if integer)."""
+    raw = max(float(raw), 1e-12)
+    magnitude = 10 ** math.floor(math.log10(raw))
+    for multiple in (1, 2, 2.5, 5, 10):
+        width = multiple * magnitude
+        if width >= raw * (1 - 1e-9) and (not integer or float(width).is_integer()):
+            break
+    return max(1, round(width)) if integer else width
+
+
+def null_bins(draws, observed, integer):
+    """Histogram edges for the permutation maxima, from 0 to past the larger of the observed value and the null.
+
+    The width follows the Freedman–Diaconis rule (2 × IQR × n^(-1/3)) rounded up to a round number, kept between
+    about 8 and 60 bins. Extent is a count, so its bins are whole numbers wide and start on whole numbers: a value v
+    falls in [v, v + width), and every bar from the observed value rightwards counts toward the p-value.
+    """
+    values = np.asarray(draws, dtype=float)
+    high = max(1.0, float(observed), float(values.max()) if values.size else 0.0)
+    spread = np.subtract(*np.percentile(values, [75, 25])) if values.size > 1 else 0.0
+    raw = 2 * spread / values.size ** (1 / 3) if spread > 0 else high / 30
+    width = _nice_width(min(max(raw, high / 60), high / 8), integer)
+    if integer:
+        count = int(high // width) + 1
+    else:
+        count = max(1, math.ceil(high * 1.04 / width - 1e-9))
+    return np.arange(count + 1) * width
+
+
 SPEEDS = {"1.5 s per layer": 1500, "1 s per layer": 1000, "0.5 s per layer": 500, "0.25 s per layer": 250, "0.1 s per layer": 100}
 EXPORTS = (
     ("Report", "txt", result_text,
@@ -277,6 +320,8 @@ class ResultsView(ttk.Frame):
             return
         self.cfg, self.data = self.result["config"], self.result["dataset"]
         self.classic = self.cfg["inference_mode"] == "classic"
+        # The weighted statistic shown beside extent: intensity when chosen, otherwise mass.
+        self.weight = "intensity" if self.cfg.get("metric") == "intensity" else "mass"
         self.axis = self.data["axis"]
         self.layers = len(self.axis["values"])
         self.edges = np.asarray(self.result["edges"], dtype=int).reshape(-1, 2) - 1
@@ -375,7 +420,7 @@ class ResultsView(ttk.Frame):
         table.columnconfigure(0, weight=1)
         cols = ("id", "sign", "p", "extent", "weight", "nodes", "layers", "members")
         headings = ("Component", "Sign", "Corrected p", "Extent (edges)" if self.classic else "Extent (sites)",
-                    "Intensity" if self.classic else "Mass", "Regions",
+                    self.weight.capitalize(), "Regions",
                     "Input layer" if self.classic else f"{self.axis['name']}", "Member regions")
         self.tree = ttk.Treeview(table, columns=cols, show="headings", selectmode="browse", height=5)
         for key, heading, width in zip(cols, headings, (100, 60, 110, 120, 90, 80, 150, 320)):
@@ -574,7 +619,7 @@ class ResultsView(ttk.Frame):
             members = ", ".join(labels[i - 1] for i in c["nodes"][:4]) + (" …" if len(c["nodes"]) > 4 else "")
             self.tree.insert("", "end", iid=str(c["id"]), values=(
                 c["id"], self._sign(c), f"{c['p_fwe']:.4g}", c["extent"],
-                f"{c['intensity' if self.classic else 'mass']:.4g}", c["n_nodes"],
+                f"{c.get(self.weight, c['mass']):.4g}", c["n_nodes"],
                 self.cfg["classic_layer"] if self.classic else
                 f"{_range_label(values, self.axis['unit'])} ({len(values)})", members))
         self.tree.configure(height=max(3, min(8, len(visible))))
@@ -657,7 +702,7 @@ class ResultsView(ttk.Frame):
         rows = [("Corrected p", f"{c['p_fwe']:.4g}" + ("" if c["p_fwe"] <= alpha else " (not significant)")),
                 ("Effect", self._direction(c)),
                 ("Extent", f"{c['extent']} {'edges' if self.classic else 'region–layer sites'}"),
-                ("Intensity" if self.classic else "Mass", f"{c['intensity' if self.classic else 'mass']:.4g}"),
+                (self.weight.capitalize(), f"{c.get(self.weight, c['mass']):.4g}"),
                 ("Regions", str(c["n_nodes"]))]
         if self.classic:
             rows.append(("Input layer", f"{self.cfg['classic_layer']}"))
@@ -967,12 +1012,12 @@ class ResultsView(ttk.Frame):
         left, right = 112, w - 28
         step = (right - left) / self.layers
         title_y = 22
-        panels = ((80, 230, "edges", "Edges above threshold", "Edges"),
-                  (80 + 230 + 96, 170, "nodes", "Active regions", "Regions"))
+        panels = ((80, 230, "edges", "Number of suprathreshold edges", "Edges"),
+                  (80 + 230 + 96, 170, "nodes", "Number of participating regions", "Regions"))
         x0, x1 = left + (span[0] - 1) * step, left + span[-1] * step
         self.plot.create_rectangle(x0, panels[0][0] - 8, x1, panels[1][0] + panels[1][1], fill=self.pal["band"], outline="")
         self.legend(right, title_y, [("box", self.comp, f"Component {self.component['id']}", ()),
-                                     ("box", self.context, "All edges above threshold, same sign", ()),
+                                     ("box", self.context, "All suprathreshold edges, same sign", ()),
                                      ("box", self.pal["band"], "Layers the component spans", ())], align="right")
         for top, h, key, title, unit in panels:
             self.text(left, top - 30, title, size=13, bold=True)
@@ -1191,10 +1236,12 @@ class ResultsView(ttk.Frame):
     def null_histogram(self, w):
         draws = np.asarray(self.result["null_max"], dtype=float)
         observed = float(self.component["test_stat"])
-        end = max(1.0, observed, float(draws.max()) if len(draws) else 1.0) * 1.1
-        counts, limits = np.histogram(draws, bins=24, range=(0, end))
+        metric = self.cfg["metric"]
+        limits = null_bins(draws, observed, integer=metric == "extent")
+        counts, _ = np.histogram(draws, bins=limits)
+        end = float(limits[-1])
         left, right, top, bottom = 112, w - 30, 96, 386
-        self.text(left, 22, "Largest component in each permutation", size=13, bold=True)
+        self.text(left, 22, "Maximum component statistic in each permutation", size=13, bold=True)
         high = self._y_axis(left, right, top, bottom - top, max(1, int(counts.max())), "Permutations")
         for i, count in enumerate(counts):
             if count:
@@ -1214,17 +1261,14 @@ class ResultsView(ttk.Frame):
             tx = left + (right - left) * tick / end
             self.plot.create_line(tx, bottom, tx, bottom + 6, fill=self.axis_line)
             self.text(tx, bottom + 20, f"{tick:g}", anchor="center", color=self.muted)
-        self.text((left + right) / 2, bottom + 50, f"Size of the largest component ({self.cfg['metric']})", anchor="center",
+        self.text((left + right) / 2, bottom + 50, f"Maximum component {metric}", anchor="center",
                   size=12, color=self.muted)
         items = [("box", self.context, "Permutation maxima", ()),
                  ("line", self.comp, f"Component {self.component['id']} ({observed:g})", ())]
         if critical is not None:
             items.append(("line", self.pal["critical"], f"Critical value at α = {alpha:g} ({critical:g})", (3, 4)))
         self.legend(left, 54, items)
-        exceed = int(np.count_nonzero(draws >= observed))
-        self.note.set(f"Corrected p = (1 + {exceed} permutation maxima ≥ {observed:g}) / ({len(draws):,} + 1) = "
-                      f"{self.component['p_fwe']:.4g}."
-                      + (f" Components larger than {critical:g} are significant at α = {alpha:g}." if critical is not None else ""))
+        self.note.set(p_value_sentence(draws, observed, metric, self.component["p_fwe"], alpha))
         return bottom + 74
 
     def _plot_click(self, event):

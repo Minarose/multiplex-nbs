@@ -531,9 +531,15 @@ def _threshold_unit(mode, design):
 
 
 def _metric_options(mode):
+    """Extent or mass. Intensity is mass with the threshold subtracted, a check box under Mass."""
     if mode == "classic":
-        return {"extent": "Extent · number of edges", "intensity": "Intensity · excess above threshold"}
-    return {"extent": "Extent · number of node–layer sites", "mass": "Mass · summed statistic magnitudes"}
+        return {"extent": "Extent · number of edges", "mass": "Mass · summed edge statistics"}
+    return {"extent": "Extent · number of node–layer sites", "mass": "Mass · summed edge statistics"}
+
+
+SUBTRACT_LABEL = "Subtract the threshold from each edge*"
+SUBTRACT_NOTE = ("* Sums each edge statistic minus the threshold instead of the full statistic. This equals "
+                 "intensity in the NBS toolbox, and results are labelled intensity.")
 
 
 def _number(raw, label, integer=False, minimum=0):
@@ -566,8 +572,10 @@ def model_page(app, parent):
     design_var = tk.StringVar(parent, DESIGNS.get(design_key, "Choose a design"))
     threshold = tk.StringVar(parent, config.get("threshold", "" if _threshold_unit(mode_key, design_key) == "mean weight" else 3))
     tail_var = tk.StringVar(parent, TAILS.get(config.get("tail"), "Positive"))
-    metric_var = tk.StringVar(parent, _metric_options(mode_key).get(config.get("metric"), _metric_options(mode_key)["extent"]))
-    perm = tk.StringVar(parent, config.get("n_perm", 1000))
+    chosen_metric = config.get("metric")
+    metric_var = tk.StringVar(parent, _metric_options(mode_key)["mass" if chosen_metric in ("mass", "intensity") else "extent"])
+    subtract = tk.BooleanVar(parent, chosen_metric == "intensity")
+    perm = tk.StringVar(parent, config.get("n_perm", 9999))
     seed = tk.StringVar(parent, "" if config.get("seed", 1) is None else config.get("seed", 1))
     alpha = tk.StringVar(parent, config.get("alpha", .05))
     method = tk.StringVar(parent, RESAMPLING.get(config.get("method"), "Automatic"))
@@ -598,7 +606,11 @@ def model_page(app, parent):
     _field(settings, 1, "Tail", tail_widget)
     metric_widget = _combo(settings, metric_var, _metric_options(mode_key).values())
     _field(settings, 2, "Component statistic", metric_widget)
-    _field(settings, 3, "Permutations", ttk.Entry(settings, textvariable=perm))
+    subtract_widget = ttk.Checkbutton(settings, text=SUBTRACT_LABEL, variable=subtract)
+    subtract_widget.grid(row=3, column=1, sticky="w", pady=(0, 2))
+    subtract_note = ttk.Label(settings, text=SUBTRACT_NOTE, style="Muted.TLabel", wraplength=430, justify="left")
+    subtract_note.grid(row=4, column=1, sticky="w", pady=(0, 6))
+    _field(settings, 5, "Permutations", ttk.Entry(settings, textvariable=perm))
     advanced_toggle = tk.BooleanVar(parent, False)
     advanced = ttk.Frame(parent)
     extra = _fields(advanced)
@@ -633,7 +645,8 @@ def model_page(app, parent):
         opts = _metric_options(mode)
         values = {"inference_mode": mode, "design": design,
                   "threshold": threshold.get(), "tail": _key(TAILS, tail_var.get()),
-                  "metric": _key(opts, metric_var.get()), "n_perm": perm.get(),
+                  "metric": "intensity" if _key(opts, metric_var.get()) == "mass" and subtract.get()
+                  else _key(opts, metric_var.get()), "n_perm": perm.get(),
                   "seed": seed.get(), "alpha": alpha.get(),
                   "method": _key(RESAMPLING, method.get()) if design.startswith("glm") else "auto",
                   "use_abs": use_abs.get(),
@@ -677,6 +690,7 @@ def model_page(app, parent):
         metric_widget.configure(values=list(options.values()))
         if metric_var.get() not in options.values():
             metric_var.set(options["extent"])
+        show_fields((subtract_widget, subtract_note), metric_var.get() == options["mass"])
         current_unit = _threshold_unit(mode, design)
         if current_unit != unit:
             threshold.set("")
@@ -726,7 +740,7 @@ def model_page(app, parent):
     # Native typing, keyboard selection, and .current() all change the Tcl variable.
     # A virtual selection event need not be delivered while a page is unmapped.
     traces = [(var, var.trace_add("write", refresh))
-              for var in (mode_var, design_var, layer)]
+              for var in (mode_var, design_var, layer, metric_var)]
     def threshold_changed(*_):
         # refresh clears the threshold while switching measurement units.
         if unit == _threshold_unit(*selection()):

@@ -31,7 +31,7 @@ seed 7 by default. Synthetic weights are arbitrary signed values, not streamline
 probabilities or a biophysical model of time-resolved connectivity.
 
 Run the demo with its default right-tailed independent-groups test, threshold 3,
-extent, 999 permutations and permutation seed 1. The output records both the
+extent, 9,999 permutations and permutation seed 1. The output records both the
 simulation provenance and analysis settings. A significant component supports
 component-level inference; its membership can extend beyond the planted sites
 because of random noise. Individual nodes, edges and time points do not acquire

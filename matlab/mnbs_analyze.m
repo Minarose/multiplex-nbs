@@ -29,11 +29,13 @@ function result = mnbs_analyze(W, design, opts)
 %     opts   Optional struct with any of these fields (default in brackets):
 %              .t0             primary threshold                          [3]
 %              .tail           'right', 'left' or 'both'                  ['right']
-%              .clusterMetric  'extent' (region-layer sites) or 'mass'    ['extent']
+%              .clusterMetric  'extent' (region-layer sites), 'mass'      ['extent']
+%                              (summed edge statistics) or 'intensity'
+%                              (mass minus t0 per edge, as in NBS)
 %              .layerAdjacency 'consecutive' = Multiplex-NBS              ['consecutive']
 %                              'independent' = Layer-wise NBS (components
 %                              stay in their layer; one correction for all)
-%              .nPerm          random permutations; use >= 5000 to report [1000]
+%              .nPerm          random permutations; use >= 5000 to report [9999]
 %              .rngSeed        random seed                                [1]
 %              .alpha          reporting cutoff for result.significant    [0.05]
 %              .test           'two-sample' or 'paired'                   ['two-sample']
@@ -52,8 +54,8 @@ function result = mnbs_analyze(W, design, opts)
 %   Output
 %     result  struct with fields
 %       .clusters     one element per observed component, with .nodes
-%                     (regions), .layerBins (layers), .extent, .mass, .tail,
-%                     .p_FWE and .nodeFreqIdx (sites)
+%                     (regions), .layerBins (layers), .extent, .mass,
+%                     .intensity, .tail, .p_FWE and .nodeFreqIdx (sites)
 %       .pvalues      corrected p-value of each component
 %       .significant  table of components with p_FWE <= opts.alpha (id,
 %                     nNodes, nFreqBins, freqMin, freqMax as layer indices,
@@ -87,7 +89,7 @@ function result = mnbs_analyze(W, design, opts)
 
 if nargin<3, opts=struct(); end
 if ~isstruct(opts) || ~isscalar(opts), error('opts must be a scalar struct.'); end
-defaults=struct('nPerm',1000,'t0',3,'tail','right','clusterMetric','extent', ...
+defaults=struct('nPerm',9999,'t0',3,'tail','right','clusterMetric','extent', ...
     'rngSeed',1,'test','two-sample','useParallel',false,'verbose',false, ...
     'alpha',0.05,'freqMask',[],'useAbs',false,'exchangeBlocks',[], ...
     'method','auto','pairs',[],'progress',[], ...
@@ -116,7 +118,7 @@ for field={'axisName','axisUnit'}
 end
 if isempty(opts.axisName), error('axisName must be a nonempty text label.'); end
 opts.tail=validatestring(opts.tail,{'right','left','both'});
-opts.clusterMetric=validatestring(opts.clusterMetric,{'extent','mass'});
+opts.clusterMetric=validatestring(opts.clusterMetric,{'extent','mass','intensity'});
 opts.test=validatestring(opts.test,{'two-sample','paired'});
 opts.method=validatestring(opts.method,{'auto','freedman-lane','rowshuffle'});
 if ~isempty(opts.progress) && ~isa(opts.progress,'function_handle'), error('progress must be a function handle.'); end

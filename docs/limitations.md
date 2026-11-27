@@ -3,11 +3,14 @@
 - **Inference is at component level.** A significant component does not make any
   single edge, region or layer significant, and its first and last layers are not
   corrected estimates of effect onset or offset (Sassenhagen & Draschkow, 2019).
-- **Exchangeability.** Label and row shuffles assume observations are exchangeable
-  under the null within any exchange blocks. Sign flips (paired, one-sample) assume
-  differences are symmetric about zero.
-- **GLMs with covariates.** Freedman–Lane permutation is approximate when nuisance
-  regressors are present.
+- **Exchangeability.** Unrestricted label permutation requires observations to be
+  exchangeable under the null hypothesis (within any exchange blocks). One-sample sign
+  flips assume each map is symmetric about zero under the null.
+- **Paired designs.** Paired comparisons require permutations that preserve subject
+  pairing, such as within-subject condition swaps or sign-flipping paired differences.
+- **GLMs with covariates.** Freedman–Lane permutation accommodates nuisance regressors
+  by permuting residuals from a reduced GLM. Validity depends on the error structure
+  and exchangeability assumptions.
 - **Thresholds.** Results depend on the primary threshold; choose it in advance. Low
   thresholds let components chain together, which reduces specificity.
 - **One ordered axis.** Layers form one axis (time *or* frequency). A joint time ×
