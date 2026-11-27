@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The page may load code only from itself and the pinned Pyodide release on jsDelivr. It has no
+       server to send data to, and no script here sends any; the engine runs in worker.js. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/pyodide/ 'wasm-unsafe-eval'; connect-src 'self' https://cdn.jsdelivr.net/pyodide/; worker-src 'self' https://cdn.jsdelivr.net/pyodide/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Multiplex-NBS</title>
+  <meta name="description" content="Classic, layer-wise and multiplex network-based statistics, running in your browser.">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <aside class="rail" id="rail" aria-label="Navigation"></aside>
+  <main id="main"><div class="page" id="page"></div></main>
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
