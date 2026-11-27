@@ -594,16 +594,20 @@ def refresh_report(result):
                                 "direction": direction, "significant_count": count,
                                 "total_clusters": len(result["clusters"]), "minimum_p": minimum_p,
                                 "warnings": warnings}
-    metric = ("the number of node–layer sites" if config["metric"] == "extent" else
-              "raw tail-adjusted statistic mass, split equally between edge endpoints")
+    metric = {"extent": "the number of node–layer sites",
+              "mass": "raw tail-adjusted statistic mass, split equally between edge endpoints",
+              "intensity": ("the sum of each retained tail-adjusted edge statistic minus the primary threshold "
+                            "(intensity in NBS Connectome)")}[config["metric"]]
     topology = ("Active copies of the same node were joined across consecutive array slices. "
                 "Axis spacing did not weight adjacency." if config["layer_adjacency"] == "consecutive" else
                 "No links were formed between slices; the correction family included clusters from every slice.")
     if classic:
         value = f"{axis['values'][0]:g} {axis['unit']}".strip()
         topology = f"Classic NBS formed connected components in input layer {config['classic_layer']} ({axis['name']} = {value})."
-        metric = ("the number of retained edges" if config["metric"] == "extent" else
-                  "the sum of each retained tail-adjusted edge statistic minus the primary threshold")
+        metric = {"extent": "the number of retained edges",
+                  "mass": "the sum of the retained tail-adjusted edge statistics",
+                  "intensity": "the sum of each retained tail-adjusted edge statistic minus the primary threshold"
+                  }[config["metric"]]
     statistic = ("mean connectivity in input units" if config["stat_type"] == "mean" else
                  f"{config['stat_type'].upper()} statistics")
     result["methods"] = (
@@ -631,7 +635,7 @@ def result_text(result):
     dataset = result["dataset"]
     axis = dataset["axis"]
     classic = result["config"].get("inference_mode") == "classic"
-    score = "intensity" if classic else "mass"
+    score = "intensity" if result["config"].get("metric") == "intensity" else "mass"
     extent_unit = "edges" if classic else "node–layer sites"
     rows = ["MULTIPLEX-NBS — ANALYSIS REPORT", result.get("dataset_name", "Dataset"), "",
             report["headline"], report["summary"], report["direction"], report["caveat"], "",
@@ -641,7 +645,7 @@ def result_text(result):
     for c in result["clusters"]:
         bins = c["layer_bins"]
         values = ", ".join(f"{axis['values'][b-1]:g}" for b in bins)
-        rows.append(f"{c['id']} | {c['tail']} | {c['extent']} | {c[score]:.6g} | {c['p_fwe']:.6g} | "
+        rows.append(f"{c['id']} | {c['tail']} | {c['extent']} | {c.get(score, c['mass']):.6g} | {c['p_fwe']:.6g} | "
                     f"{c['p_fwe'] <= alpha} | {', '.join(dataset['node_labels'][n-1] for n in c['nodes'])} | "
                     f"{', '.join(map(str, bins))} | {values} {axis['unit']}")
     if not result["clusters"]:

@@ -66,7 +66,7 @@ const TAB_HINTS = {
   brain: "The component on a glass brain, one layer at a time. Press Play to step through the layers, or drag the slider.",
   network: "The component one layer at a time. Press Play to step through the layers, or drag the slider.",
   layers: "Every layer the component spans, side by side. Click a panel to open that layer in the Brain tab.",
-  null: "How the extent or mass of the selected component compares with the maximum component statistic obtained "
+  null: "How the extent, mass or intensity of the selected component compares with the maximum component statistic obtained "
     + "in each permutation.",
 };
 const SPEEDS = [[1500, "1.5 s per layer"], [1000, "1 s per layer"], [500, "0.5 s per layer"],
@@ -338,8 +338,8 @@ async function edit(fn, args, files = []) {
 function defaultConfig(desc, demo) {
   const layered = desc.layer_count > 1;
   const config = { mode: layered ? "multiplex" : "classic", design: desc.suggested_design || "", threshold: "3",
-                   tail: "right", metric: "extent", n_perm: "9999", seed: "1", alpha: "0.05", method: "auto",
-                   use_abs: false, classic_layer: 1 };
+                   tail: "right", metric: "extent", subtract: false, n_perm: "9999", seed: "1", alpha: "0.05",
+                   method: "auto", use_abs: false, classic_layer: 1 };
   if (demo === "paired") config.design = "paired";
   if (config.mode === "classic" && config.design === "one-sample") config.threshold = "";
   return config;
@@ -351,9 +351,17 @@ function thresholdUnit(mode, design) {
   if (mode === "classic" && design === "one-sample") return "mean weight";
   return "t";
 }
+// Extent or mass. Intensity is mass with the threshold subtracted, a check box under Mass.
 const metricOptions = (mode) => (mode === "classic"
-  ? { extent: "Extent · number of edges", intensity: "Intensity · excess above threshold" }
-  : { extent: "Extent · number of node–layer sites", mass: "Mass · summed statistic magnitudes" });
+  ? { extent: "Extent · number of edges", mass: "Mass · summed edge statistics" }
+  : { extent: "Extent · number of node–layer sites", mass: "Mass · summed edge statistics" });
+const SUBTRACT_LABEL = "Subtract the threshold from each edge*";
+const SUBTRACT_NOTE = "* Sums each edge statistic minus the threshold instead of the full statistic. This equals "
+  + "intensity in the NBS toolbox, and results are labelled intensity.";
+const engineMetric = (c) => (c.metric === "mass" && c.subtract ? "intensity" : c.metric);
+// The weighted statistic shown beside extent: intensity when chosen, otherwise mass.
+const weightKey = (cfg) => (cfg.metric === "intensity" ? "intensity" : "mass");
+const weightLabel = (cfg) => (cfg.metric === "intensity" ? "Intensity" : "Mass");
 
 function modelState() {
   const c = S.config, desc = S.desc, count = desc.layer_count;
@@ -394,7 +402,7 @@ function engineConfig() {
   const alpha = number(c.alpha, "Reporting alpha");
   if (!(alpha > 0 && alpha < 1)) throw new Error("The significance cutoff (alpha) must be a number between 0 and 1.");
   const config = {
-    inference_mode: mode, design: c.design, threshold, tail: c.design === "glm-f" ? "right" : c.tail, metric: c.metric,
+    inference_mode: mode, design: c.design, threshold, tail: c.design === "glm-f" ? "right" : c.tail, metric: engineMetric(c),
     n_perm: number(c.n_perm, "Permutations", { integer: true, minimum: 1 }),
     seed: String(c.seed).trim() ? number(c.seed, "Random seed", { integer: true }) : null,
     alpha, method: c.design.startsWith("glm") ? c.method : "auto",
@@ -804,6 +812,8 @@ function modelPage() {
       <label for="m-threshold">Primary threshold (${esc(S.unit)})</label><input type="text" inputmode="decimal" id="m-threshold" value="${esc(c.threshold)}">
       <label for="m-tail">Tail</label>${select("m-tail", TAILS, c.design === "glm-f" ? "right" : c.tail, { disabled: c.design === "glm-f" })}
       <label for="m-metric">Component statistic</label>${select("m-metric", metricOptions(c.mode), c.metric)}
+      ${c.metric === "mass" ? `<label class="check wide"><input type="checkbox" id="m-subtract" ${c.subtract ? "checked" : ""}>
+        ${esc(SUBTRACT_LABEL)}</label><div class="hint">${esc(SUBTRACT_NOTE)}</div>` : ""}
       <label for="m-perm">Permutations</label><input type="text" inputmode="numeric" id="m-perm" value="${esc(c.n_perm)}">
     </div>
     <label class="check" style="margin-bottom: 13px"><input type="checkbox" id="m-advanced" ${S.advanced ? "checked" : ""}> Advanced settings</label>
@@ -825,10 +835,11 @@ function modelChanged(id, value) {
   const c = S.config;
   if (id === "m-advanced") { S.advanced = value; return true; }
   const key = { "m-mode": "mode", "m-layer": "classic_layer", "m-design": "design", "m-threshold": "threshold",
-                "m-tail": "tail", "m-metric": "metric", "m-perm": "n_perm", "m-alpha": "alpha", "m-seed": "seed",
-                "m-method": "method", "m-abs": "use_abs" }[id];
+                "m-tail": "tail", "m-metric": "metric", "m-subtract": "subtract", "m-perm": "n_perm",
+                "m-alpha": "alpha", "m-seed": "seed", "m-method": "method", "m-abs": "use_abs" }[id];
   if (!key) return false;
   c[key] = value;
+  if (key === "metric") return true;  // shows or hides the subtract-threshold box
   if (key === "mode" || key === "design") {
     const options = metricOptions(c.mode);
     if (!(c.metric in options)) c.metric = "extent";
@@ -925,14 +936,14 @@ function resultsPage() {
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Component</th><th>Sign</th><th>Corrected p</th><th>${classic ? "Extent (edges)" : "Extent (sites)"}</th>
-        <th>${classic ? "Intensity" : "Mass"}</th><th>Regions</th><th>${classic ? "Input layer" : esc(axis.name)}</th>
+        <th>${weightLabel(cfg)}</th><th>Regions</th><th>${classic ? "Input layer" : esc(axis.name)}</th>
         <th class="members">Member regions</th></tr></thead>
       <tbody>${visible.map((c) => {
         const values = c.layer_bins.map((b) => axis.values[b - 1]);
         const members = c.nodes.slice(0, 4).map((i) => labels[i - 1]).join(", ") + (c.nodes.length > 4 ? " …" : "");
         return `<tr data-comp="${c.id}" aria-selected="${c.id === v.comp}" tabindex="0">
           <td>${c.id}</td><td>${cfg.stat_type === "f" ? "F" : c.tail === "right" ? "+" : "−"}</td><td>${fmt(c.p_fwe, 4)}</td>
-          <td>${c.extent}</td><td>${fmt(classic ? c.intensity : c.mass, 4)}</td><td>${c.n_nodes}</td>
+          <td>${c.extent}</td><td>${fmt(c[weightKey(cfg)] ?? c.mass, 4)}</td><td>${c.n_nodes}</td>
           <td>${classic ? cfg.classic_layer : `${esc(rangeLabel(values, axis.unit))} (${values.length})`}</td>
           <td class="members">${esc(members)}</td></tr>`;
       }).join("")}</tbody></table></div>
@@ -970,7 +981,7 @@ function explorer(comp) {
   const rows = [["Corrected p", fmt(comp.p_fwe, 4) + (comp.p_fwe <= alpha ? "" : " (not significant)")],
                 ["Effect", direction(cfg, comp)],
                 ["Extent", `${comp.extent} ${classic ? "edges" : "region–layer sites"}`],
-                [classic ? "Intensity" : "Mass", fmt(classic ? comp.intensity : comp.mass, 4)],
+                [weightLabel(cfg), fmt(comp[weightKey(cfg)] ?? comp.mass, 4)],
                 ["Regions", String(comp.n_nodes)]];
   if (classic) rows.push(["Input layer", String(cfg.classic_layer)]);
   else rows.push(["Layers", String(values.length)], [axis.name, rangeLabel(values, axis.unit)]);
@@ -1130,13 +1141,16 @@ function referencePage() {
     const details = {
       classic: ["Identifies connected components within a single adjacency matrix, with significance assessed through "
                   + "permutation testing.",
-                "Component statistic: number of suprathreshold edges (extent) or summed excess over the threshold (intensity)."],
+                "Component statistic: number of suprathreshold edges (extent) or summed edge statistics (mass), "
+                  + "optionally with the threshold subtracted (intensity)."],
       layerwise: ["Identifies connected components independently within each layer, with permutation testing controlling "
                     + "family-wise error across all layers.",
-                  "Component statistic: number of region–layer sites (extent) or summed statistics (mass), within each layer."],
+                  "Component statistic: number of region–layer sites (extent) or summed edge statistics (mass), "
+                    + "optionally with the threshold subtracted (intensity), within each layer."],
       multiplex: ["Links active regions across adjacent layers, allowing connected components to evolve without requiring "
                     + "identical edges across layers. Significance is assessed through permutation testing.",
-                  "Component statistic: number of region–layer sites (extent) or summed statistics (mass), across layers."],
+                  "Component statistic: number of region–layer sites (extent) or summed edge statistics (mass), "
+                    + "optionally with the threshold subtracted (intensity), across layers."],
     };
     body = `<div class="method-cards">${Object.entries(METHODS).map(([key, name]) => `
         <div class="card"><div class="card-title" style="margin-bottom: 10px">${name}</div>
