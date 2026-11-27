@@ -77,8 +77,10 @@ compare its SHA-256 checksum with the `.sha256` file on the release page
    writes everything to one `.npz` that opens directly next time.
 3. **Statistical model.** Multiplex-NBS is selected for layered data; you can choose
    Layer-wise or Classic NBS instead. Set the study design, primary threshold, tail,
-   component measure and number of permutations (9,999 by default; use at least 5000
-   for results you report). Choose these before looking at results.
+   component statistic and number of permutations (9,999 by default; use at least 5000
+   for results you report). The component statistic is Extent or Mass; under Mass,
+   **Subtract the threshold from each edge** gives intensity as defined in the NBS
+   toolbox. Choose these before looking at results.
 4. **Results.** The table lists components; click one to see it in the figures:
    - **Layer profile:** the distribution of suprathreshold edges and participating
      regions across layers, highlighting those belonging to the selected component.
@@ -87,7 +89,7 @@ compare its SHA-256 checksum with the `.sha256` file on the release page
    - **Brain:** the component on a glass brain (left, right, axial and coronal views, or
      one large view), with playback through the layers. Needs MNI coordinates.
    - **All layers:** every layer the component spans; click one to open it in Brain.
-   - **Null distribution:** how the extent or mass of the selected component compares
+   - **Null distribution:** how the extent, mass or intensity of the selected component compares
      with the maximum component statistic obtained in each permutation, with the
      critical value and a sentence explaining the corrected p-value.
 5. **Save results.** Report (`.txt`), component table (`.csv`), full results (`.json`),

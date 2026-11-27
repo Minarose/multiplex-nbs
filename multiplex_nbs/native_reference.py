@@ -55,16 +55,16 @@ def _method_cards(app, parent):
     details = {
         "classic": ("Identifies connected components within a single adjacency matrix, with significance assessed "
                     "through permutation testing.",
-                    "Component statistic: number of suprathreshold edges (extent) or summed excess over the "
-                    "threshold (intensity)."),
+                    "Component statistic: number of suprathreshold edges (extent) or summed edge statistics "
+                    "(mass), optionally with the threshold subtracted (intensity)."),
         "layerwise": ("Identifies connected components independently within each layer, with permutation testing "
                       "controlling family-wise error across all layers.",
-                      "Component statistic: number of region–layer sites (extent) or summed statistics (mass), "
-                      "within each layer."),
+                      "Component statistic: number of region–layer sites (extent) or summed edge statistics "
+                      "(mass), optionally with the threshold subtracted (intensity), within each layer."),
         "multiplex": ("Links active regions across adjacent layers, allowing connected components to evolve without "
                       "requiring identical edges across layers. Significance is assessed through permutation testing.",
-                      "Component statistic: number of region–layer sites (extent) or summed statistics (mass), "
-                      "across layers."),
+                      "Component statistic: number of region–layer sites (extent) or summed edge statistics "
+                      "(mass), optionally with the threshold subtracted (intensity), across layers."),
     }
     cards = []
     for key, name in METHODS.items():

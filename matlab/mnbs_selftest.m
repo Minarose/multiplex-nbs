@@ -23,6 +23,9 @@ assert(numel(independent)==2 && all([independent.extent]==2));
 assert(isequal(C.layerBins,C.freqBins));
 C2=mnbs_components(-T,i,j,3,3,'left','extent');
 assert(C2.testStat==4 && abs(C2.mass-9)<1e-12);
+% Intensity subtracts the threshold once per kept edge: 9 - 2 edges x 3.
+Ci=mnbs_components(T,i,j,3,3,'right','intensity');
+assert(abs(Ci.intensity-3)<1e-12 && abs(Ci.testStat-3)<1e-12 && abs(C2.intensity-3)<1e-12);
 C3=mnbs_components([4;-5;0],i,j,3,3,'both','extent');
 assert(numel(C3)==2 && all([C3.extent]==2));
 assert(numel(mnbs_components(T,i,j,3,3,'both','extent'))==1);
@@ -129,6 +132,7 @@ for k=1:numel(clusters)
     assert(isequal([nodes bins],expected.sites));
     assert(strcmp(clusters(k).tail,expected.tail) && clusters(k).extent==expected.extent);
     assert(abs(clusters(k).mass-expected.mass)<1e-10);
+    assert(abs(clusters(k).intensity-expected.intensity)<1e-10);
 end
 model=struct('X',fixture.X,'C',fixture.C(:)','statType','t');
 glm=mnbs_edgestat_glm(W,model,struct('tail','both'));

@@ -14,7 +14,7 @@ Generated from the docstrings by `tools/build_api_docs.py`; the same text is sho
 ### nbs
 
 ```python
-nbs(data, group=None, *, method='multiplex', design=None, threshold=3.0, tail='right', metric='extent', n_perm=5000, seed=1, alpha=0.05, layer=None, permutation='auto', use_abs=False, progress=None, name=None, **dataset)
+nbs(data, group=None, *, method='multiplex', design=None, threshold=3.0, tail='right', metric='extent', n_perm=9999, seed=1, alpha=0.05, layer=None, permutation='auto', use_abs=False, progress=None, name=None, **dataset)
 ```
 
 ```text
@@ -48,12 +48,14 @@ tail : {"right", "left", "both"}
     Direction tested. ``"both"`` forms positive and negative components separately
     and corrects over both with one maximum.
 metric : {"extent", "mass", "intensity"}
-    Component size. ``"extent"``: region–layer sites (multiplex/layer-wise) or edges
-    (classic). ``"mass"``: summed statistic (multiplex/layer-wise). ``"intensity"``:
-    summed excess over the threshold (classic, as in NBS Connectome v1.2).
+    Component statistic, available for every method. ``"extent"``: region–layer
+    sites (multiplex/layer-wise) or edges (classic). ``"mass"``: the summed
+    statistic of the component's suprathreshold edges. ``"intensity"``: mass with the
+    threshold subtracted from each edge, i.e. the summed excess over the threshold
+    (intensity in NBS Connectome v1.2).
 n_perm : int
-    Number of random permutations. The smallest attainable p is 1/(n_perm + 1); use
-    at least 5000 for reported results.
+    Number of random permutations (default 9999). The smallest attainable p is
+    1/(n_perm + 1); use at least 5000 for reported results.
 seed : int or None
     Random seed, for reproducibility.
 alpha : float
@@ -153,8 +155,8 @@ classic_nbs(data, group=None, *, layer=None, metric='extent', **options)
 Classic NBS (Zalesky et al., 2010) on one network per observation.
 
 For a stack of networks, choose one ``layer`` (1-based) in advance. ``metric`` is
-``"extent"`` (number of edges) or ``"intensity"`` (summed excess over the
-threshold). Equivalent to ``nbs(data, group, method="classic", ...)``; see
+``"extent"`` (number of edges), ``"mass"`` (summed edge statistics) or
+``"intensity"`` (summed excess over the threshold, as in NBS Connectome). Equivalent to ``nbs(data, group, method="classic", ...)``; see
 :func:`nbs`. See ``docs/classic-nbs-parity.md`` for agreement with NBS v1.2.
 ```
 
@@ -367,7 +369,7 @@ Returns
 -------
 list of dict
     Each with ``id``, ``p_fwe``, ``significant``, ``direction`` ("positive",
-    "negative" or "F"), ``extent``, ``mass`` (or ``intensity`` for classic),
+    "negative" or "F"), ``extent``, ``mass``, ``intensity``,
     ``n_regions``, ``regions`` (labels), ``region_indices`` (1-based),
     ``layers`` (1-based indices) and ``axis_values`` (values of those layers).
 ```
@@ -480,7 +482,7 @@ matplotlib.axes.Axes
 ### analyze
 
 ```python
-analyze(W, group=None, X=None, C=None, stat_type='t', test='two-sample', threshold=3.0, tail='right', metric='extent', n_perm=1000, seed=1, exchange_blocks=None, method='auto', use_abs=False, progress=None, layer_adjacency='consecutive', inference_mode='multiplex', classic_layer=None)
+analyze(W, group=None, X=None, C=None, stat_type='t', test='two-sample', threshold=3.0, tail='right', metric='extent', n_perm=9999, seed=1, exchange_blocks=None, method='auto', use_abs=False, progress=None, layer_adjacency='consecutive', inference_mode='multiplex', classic_layer=None)
 ```
 
 ```text
@@ -508,7 +510,9 @@ spans every slice. This option must be chosen before viewing results.
 
 Classic NBS accepts one matrix per observation (S,N,N). For a stack
 (S,N,N,L), choose one prespecified 1-based classic_layer. Extent counts
-retained edges. Intensity sums the excess above the threshold over them.
+retained edges in classic mode and active node-layer sites otherwise. In
+every mode, mass sums the retained tail-adjusted edge statistics and
+intensity sums each of them minus the threshold (NBS Connectome intensity).
 Result layer indices address the analyzed slice. config.classic_layer
 records its index in the original data.
 A one-sample design independently flips the sign of each observation's

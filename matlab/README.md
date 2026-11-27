@@ -44,9 +44,9 @@ MAT files contain `group` (numeric labels) or `model` (`X`, `C`, `statType`). To
 | Field | Default | Meaning |
 |---|---|---|
 | `t0` | 3 | Strict primary threshold: t > t0 or t < −t0 |
-| `nPerm` | 1000 | Number of sampled permutations |
+| `nPerm` | 9999 | Number of sampled permutations |
 | `tail` | `right` | `right`, `left`, or `both`; F requires `right` |
-| `clusterMetric` | `extent` | Number of node-layer sites, or `mass` |
+| `clusterMetric` | `extent` | Number of node-layer sites, `mass` (summed edge statistics) or `intensity` (mass with the threshold subtracted from each edge, as in NBS) |
 | `rngSeed` | 1 | Repeatable random sampling; caller RNG is restored |
 | `test` | `two-sample` | Independent Welch or `paired` |
 | `method` | `auto` | GLM: `auto`/`freedman-lane`, or explicit `rowshuffle` |
@@ -63,7 +63,7 @@ MAT files contain `group` (numeric labels) or `model` (`X`, `C`, `statType`). To
 
 Independent t statistics are lower numeric label minus higher label; a right-tailed test therefore selects positive differences in that direction. Paired tests use the first observation minus the second within each pair ID. GLM direction is determined by Cβ. Statistical validity depends on exchangeability or sign symmetry, not on the GUI selection. A Welch statistic does not make unrestricted label permutation exact under unequal variances. Freedman–Lane with nuisance covariates is generally an approximate permutation procedure. Blocks support within-block row shuffling; they are not a complete framework for every hierarchical design.
 
-Extent counts active node-layer sites. Mass divides each suprathreshold edge statistic between its endpoints and sums the site contributions. Both tails keep positive and negative components separate and calibrate against one maximum across signs. Cluster p-values are `(1 + count(nullMax >= observed))/(nPerm + 1)`. A significant cluster does not establish significance of its individual edges, nodes, or layers. A zero-error nonzero effect is rejected rather than silently assigned a statistic of zero. Select the threshold and inferential metric before inspecting results.
+Extent counts active node-layer sites. Mass divides each suprathreshold edge statistic between its endpoints and sums the site contributions. Intensity is mass minus `t0` for each kept edge, the NBS toolbox definition; in the GUI, choose Mass and tick *Subtract the threshold from each edge*. Both tails keep positive and negative components separate and calibrate against one maximum across signs. Cluster p-values are `(1 + count(nullMax >= observed))/(nPerm + 1)`. A significant cluster does not establish significance of its individual edges, nodes, or layers. A zero-error nonzero effect is rejected rather than silently assigned a statistic of zero. Select the threshold and inferential metric before inspecting results.
 
 ## Utilities and checks
 

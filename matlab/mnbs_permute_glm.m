@@ -42,7 +42,7 @@ if ~isfield(opts,'layerAdjacency'), opts.layerAdjacency='consecutive'; end
 if ~isfield(opts,'verbose'),       opts.verbose = true; end
 
 if ~isfield(permSpec,'method'),         permSpec.method = 'auto'; end
-if ~isfield(permSpec,'nPerm'),          permSpec.nPerm = 1000; end
+if ~isfield(permSpec,'nPerm'),          permSpec.nPerm = 9999; end
 if ~isfield(permSpec,'exchangeBlocks'), permSpec.exchangeBlocks = []; end
 if ~isfield(permSpec,'useParallel'),    permSpec.useParallel = false; end
 if ~isfield(permSpec,'rngSeed'),        permSpec.rngSeed = []; end

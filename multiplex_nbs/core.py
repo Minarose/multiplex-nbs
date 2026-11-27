@@ -22,6 +22,9 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import connected_components
 
 
+METRICS = ("extent", "mass", "intensity")
+
+
 def _real_array(value, name):
     raw = np.asarray(value)
     if np.iscomplexobj(raw):
@@ -100,9 +103,8 @@ def _check_cluster_options(threshold, tail, metric, layer_adjacency, inference_m
         raise ValueError("tail must be 'right', 'left', or 'both'.")
     if inference_mode not in ("classic", "multiplex"):
         raise ValueError("inference_mode must be 'classic' or 'multiplex'.")
-    metrics = ("extent", "intensity") if inference_mode == "classic" else ("extent", "mass")
-    if metric not in metrics:
-        raise ValueError(f"{inference_mode} metric must be '{metrics[0]}' or '{metrics[1]}'.")
+    if metric not in METRICS:
+        raise ValueError("metric must be 'extent', 'mass' or 'intensity'.")
     if layer_adjacency not in ("consecutive", "independent"):
         raise ValueError("layer_adjacency must be 'consecutive' or 'independent'.")
 
@@ -135,12 +137,11 @@ def _clusters(statistic, edges, n_nodes, threshold, tail, metric, layer_adjacenc
                                shape=(len(active), len(active))).tocsr()
         active_ids = np.flatnonzero(active)
         count, labels = connected_components(adjacency[active_ids][:, active_ids], directed=False)
-        if inference_mode == "classic":
-            # Both endpoints have the same component label. Count each retained edge once.
-            edge_labels = labels[np.searchsorted(active_ids, a)]
-            edge_counts = np.bincount(edge_labels, minlength=count)
-            intensity = np.bincount(edge_labels, weights=effective[edge_ids, bins] - threshold,
-                                    minlength=count)
+        # Both endpoints have the same component label. Count each retained edge once.
+        edge_labels = labels[np.searchsorted(active_ids, a)]
+        edge_counts = np.bincount(edge_labels, minlength=count)
+        intensity = np.bincount(edge_labels, weights=effective[edge_ids, bins] - threshold,
+                                minlength=count)
         for label in range(count):
             ids = active_ids[labels == label]
             nodes = ids % n_nodes + 1
@@ -156,11 +157,10 @@ def _clusters(statistic, edges, n_nodes, threshold, tail, metric, layer_adjacenc
                 "sites": np.column_stack((nodes, freqs)).tolist(),
                 "n_nodes": int(len(np.unique(nodes))), "n_frequencies": int(len(np.unique(freqs))),
                 "n_layers": int(len(np.unique(freqs))),
-                "extent": extent, "mass": cluster_mass,
+                "extent": extent, "mass": cluster_mass, "intensity": float(intensity[label]),
             }
             if inference_mode == "classic":
                 cluster["extent"] = int(edge_counts[label])
-                cluster["intensity"] = float(intensity[label])
             cluster["test_stat"] = cluster[metric]
             result.append(cluster)
     return result
@@ -226,7 +226,7 @@ def _glm_fitter(x, c, stat_type):
 
 
 def analyze(W, group=None, X=None, C=None, stat_type="t", test="two-sample",
-            threshold=3.0, tail="right", metric="extent", n_perm=1000, seed=1,
+            threshold=3.0, tail="right", metric="extent", n_perm=9999, seed=1,
             exchange_blocks=None, method="auto", use_abs=False, progress=None,
             layer_adjacency="consecutive", inference_mode="multiplex", classic_layer=None):
     """Fit and permute complete networks shaped subjects × nodes × nodes × bins.
@@ -253,7 +253,9 @@ def analyze(W, group=None, X=None, C=None, stat_type="t", test="two-sample",
 
     Classic NBS accepts one matrix per observation (S,N,N). For a stack
     (S,N,N,L), choose one prespecified 1-based classic_layer. Extent counts
-    retained edges. Intensity sums the excess above the threshold over them.
+    retained edges in classic mode and active node-layer sites otherwise. In
+    every mode, mass sums the retained tail-adjusted edge statistics and
+    intensity sums each of them minus the threshold (NBS Connectome intensity).
     Result layer indices address the analyzed slice. config.classic_layer
     records its index in the original data.
     A one-sample design independently flips the sign of each observation's

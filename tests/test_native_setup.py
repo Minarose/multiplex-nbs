@@ -75,6 +75,32 @@ class NativeModelInteraction(unittest.TestCase):
     def run_button(self):
         return self.find(lambda w: isinstance(w, ttk.Button) and w["text"] == "Run permutations")
 
+    def test_subtract_threshold_box_appears_under_mass_and_selects_intensity(self):
+        box = self.find(lambda w: isinstance(w, ttk.Checkbutton) and w["text"] == setup.SUBTRACT_LABEL)
+        self.assertFalse(box.winfo_ismapped() or box.grid_info())
+        for method in ("Multiplex-NBS", "Layer-wise NBS", "Classic NBS"):
+            with self.subTest(method=method):
+                self.choose(method)
+                if method == "Classic NBS":
+                    self.choose(next(v for v in self.find(lambda w: isinstance(w, ttk.Combobox) and
+                                                          any(" · " in str(x) and x[0].isdigit() for x in w["values"]))["values"]))
+                self.choose("Mass · summed edge statistics")
+                self.assertTrue(box.grid_info())
+                self.assertEqual(self.remember_model()["metric"], "mass")
+                box.invoke()
+                self.assertEqual(self.remember_model()["metric"], "intensity")
+                self.run_button().invoke()
+                self.assertEqual(self.executed["config"]["metric"], "intensity")
+                cluster = self.executed["clusters"][0]
+                self.assertEqual(cluster["test_stat"], cluster["intensity"])
+                box.invoke()
+                extent = next(v for v in self.find(lambda w: isinstance(w, ttk.Combobox) and
+                                                   "Mass · summed edge statistics" in w["values"])["values"]
+                              if v.startswith("Extent"))
+                self.choose(extent)
+                self.assertFalse(box.grid_info())
+                self.assertEqual(self.remember_model()["metric"], "extent")
+
     def test_classic_stack_and_one_sample_threshold(self):
         self.run_button().invoke()
         self.assertEqual(self.executed["config"]["inference_mode"], "multiplex")

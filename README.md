@@ -66,7 +66,7 @@ pip install "multiplex-nbs[plot] @ git+https://github.com/Minarose/multiplex-nbs
 from multiplex_nbs import load_demo, multiplex_nbs, components, report
 
 data = load_demo("brain-network")              # or load_dataset("study.npz") / make_dataset(W, group, ...)
-result = multiplex_nbs(data, threshold=3.0, n_perm=5000, seed=1)
+result = multiplex_nbs(data, threshold=3.0, n_perm=9999, seed=1)
 
 for c in components(result, significant_only=True):
     print(c["id"], c["p_fwe"], c["regions"], c["axis_values"])
@@ -90,7 +90,7 @@ addpath('multiplex-nbs/matlab')
 mnbs_selftest                                    % check the installation once
 
 d = mnbs_load_demo('brain-network');
-opts = struct('t0', 3, 'nPerm', 5000, 'axisName', d.axisName, ...
+opts = struct('t0', 3, 'nPerm', 9999, 'axisName', d.axisName, ...
               'axisUnit', d.axisUnit, 'axisValues', d.axisValues);
 result = mnbs_analyze(d.W, d.group, opts);       % Multiplex-NBS
 disp(result.significant)

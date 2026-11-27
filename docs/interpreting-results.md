@@ -33,14 +33,19 @@ to this pattern.
 Choose the method, primary threshold, statistical contrast, and component metric
 **before** confirmatory analysis. Exploring alternative settings can help assess
 robustness, but selecting results based on significance introduces additional
-comparisons not accounted for by the permutation correction. The apps use 9,999
-permutations by default; use at least 5000 for reported results. The smallest possible
-p-value is 1/(permutations + 1).
+comparisons not accounted for by the permutation correction. The apps, command line,
+Python and MATLAB functions use 9,999 permutations by default; use at least 5000 for
+reported results. The smallest possible p-value is 1/(permutations + 1).
 
 | Measure | Counts | Use when |
 |---|---|---|
 | Extent | region–layer sites (edges in classic mode) | the default; effects that are broad |
-| Mass / intensity | summed statistic (excess over threshold in classic mode) | strong, focal effects |
+| Mass | summed statistic of the component's suprathreshold edges, as in FSL randomise, FieldTrip and MNE | effects that are broad, strong or both |
+| Intensity | mass with the threshold subtracted from each edge, as in the NBS toolbox | strong, focal effects |
+
+Mass and intensity differ by the threshold times the number of edges, so they can rank
+components differently and give different p-values. In the apps, intensity is selected by
+choosing Mass and ticking **Subtract the threshold from each edge**.
 
 ## Outputs
 
